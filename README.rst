@@ -84,9 +84,10 @@ Options
 -------
 
 ========================== ==============================================================
- *BABEL_CONFIGURE_JINJA2*   Install i18n support to Muffin-Jinja2_  (``False``)
+ *BABEL_CONFIGURE_JINJA2*   Install i18n support to Muffin-Jinja2_  (``True``)
  *BABEL_DEFAULT_LOCALE*     Set default locale (``en``)
- *BABEL_LOCALES_DIR*        A path to directory with locales files (``locales``)
+ *BABEL_DOMAIN*             Set default domain (``messages``)
+ *BABEL_LOCALES_DIRS*       List of directories where locales are leaving
  *BABEL_SOURCES_MAP*        Babel sources map
  *BABEL_OPTIONS_MAP*        Babel options map
 ========================== ==============================================================
