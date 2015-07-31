@@ -64,6 +64,7 @@ class Plugin(BasePlugin):
     defaults = {
         'configure_jinja2': False,  # install i18n support in muffin-jinja2
         'default_locale': 'en',     # default locale
+        'domain': None,             # default domain (app.name)
         'locales_dir': 'locales',   # where compiled locales are leaving
         'sources_map': [
             ('**.py', 'python'),
@@ -83,12 +84,18 @@ class Plugin(BasePlugin):
         """ Setup the plugin's commands. """
         super(Plugin, self).setup(app)
 
+        # Set default domain
+        if not self.cfg.domain:
+            self.cfg.domain = self.app.name
+
         @app.manage.command
         def extract_messages(
-                dirname, project='', version='', charset='utf-8', locale=self.cfg.default_locale):
+                dirname, project='', version='', charset='utf-8', domain=self.cfg.domain,
+                locale=self.cfg.default_locale):
             """ Extract messages from source code.
 
             :param charset: charset to use in the output
+            :param domain:  set domain name for locales
             :param output: write PO template file to destination
             :param project: set project name in output
             :param version: set project version in output
@@ -107,7 +114,7 @@ class Plugin(BasePlugin):
                             auto_comments=comments, context=context)
 
             output = os.path.join(
-                self.cfg.locales_dir, locale, 'LC_MESSAGES', '%s.po' % self.app.name)
+                self.cfg.locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
 
             if os.path.exists(output):
                 with open(output, 'rb') as f:
@@ -127,10 +134,14 @@ class Plugin(BasePlugin):
                 outfile.close()
 
         @app.manage.command
-        def compile_messages(use_fuzzy=False, statistics=False):
+        def compile_messages(use_fuzzy=False, statistics=False, domain=self.cfg.domain):
+            """ Compile messages for locales.
+
+            :param domain:  set domain name for locales
+
+            """
             for locale in os.listdir(self.cfg.locales_dir):
-                po_file = os.path.join(
-                    self.cfg.locales_dir, locale, 'LC_MESSAGES', app.name + '.po')
+                po_file = os.path.join(self.cfg.locales_dir, locale, 'LC_MESSAGES', domain + '.po')
 
                 if not os.path.exists(po_file):
                     continue
@@ -138,8 +149,7 @@ class Plugin(BasePlugin):
                 with open(po_file, 'r') as po:
                     catalog = read_po(po, locale)
 
-                mo_file = os.path.join(
-                    self.cfg.locales_dir, locale, 'LC_MESSAGES', app.name + '.mo')
+                mo_file = os.path.join(self.cfg.locales_dir, locale, 'LC_MESSAGES', domain + '.mo')
 
                 with open(mo_file, 'wb') as mo:
                     logger.info('writing MO template file to %s' % mo_file)
@@ -195,23 +205,27 @@ class Plugin(BasePlugin):
 
         return ulocales[0][1]
 
-    def get_translations(self):
-        """ Get current translations. """
+    def get_translations(self, domain=None, locales_dir=None):
+        """ Load translations for given or configuration domain. """
         if self.local is None or not hasattr(self.local, 'babel_locale'):
             return support.NullTranslations()
 
-        if not hasattr(self.local, 'babel_translations'):
-            self.local.babel_translations = support.Translations.load(
-                self.cfg.locales_dir, locales=self.local.babel_locale, domain=self.app.name)
+        if domain is None:
+            domain = self.cfg.domain
 
-        return self.local.babel_translations
+        if not hasattr(self.local, 'babel_translations_%s' % domain):
+            setattr(self.local, 'babel_translations_%s' % domain, support.Translations.load(
+                locales_dir or self.cfg.locales_dir,
+                locales=self.local.babel_locale, domain=domain))
 
-    def gettext(self, string, **variables):
+        return getattr(self.local, 'babel_translations_%s' % domain)
+
+    def gettext(self, string, domain=None, locales_dir=None, **variables):
         """Translate a string with the current locale."""
-        t = self.get_translations()
+        t = self.get_translations(domain, locales_dir)
         return t.ugettext(string) % variables
 
-    def ngettext(self, singular, plural, num, **variables):
+    def ngettext(self, singular, plural, num, domain=None, locales_dir=None, **variables):
         """Translate a string wity the current locale.
 
         The `num` parameter is used to dispatch between singular and various plural forms
@@ -219,24 +233,25 @@ class Plugin(BasePlugin):
 
         """
         variables.setdefault('num', num)
-        t = self.get_translations()
+        t = self.get_translations(domain, locales_dir)
         return t.ungettext(singular, plural, num) % variables
 
-    def pgettext(self, context, string, **variables):
+    def pgettext(self, context, string, domain=None, locales_dir=None, **variables):
         """Like :meth:`gettext` but with a context."""
-        t = self.get_translations()
+        t = self.get_translations(domain)
         return t.upgettext(context, string) % variables
 
-    def npgettext(self, context, singular, plural, num, **variables):
+    def npgettext(self, context, singular, plural, num, domain=None, locales_dir=None,
+                  **variables):
         """Like :meth:`ngettext` but with a context."""
         variables.setdefault('num', num)
-        t = self.get_translations()
+        t = self.get_translations(domain, locales_dir)
         return t.unpgettext(context, singular, plural, num) % variables
 
-    def lazy_gettext(self, string, **variables):
+    def lazy_gettext(self, *args, **kwargs):
         """Like :meth:`gettext` but the string returned is lazy."""
-        return make_lazy_string(self.gettext, string, **variables)
+        return make_lazy_string(self.gettext, *args, **kwargs)
 
-    def lazy_pgettext(self, context, string, **variables):
+    def lazy_pgettext(self, *args, **kwargs):
         """Like :meth:`pgettext` but the string returned is lazy."""
-        return make_lazy_string(self.pgettext, context, string, **variables)
+        return make_lazy_string(self.pgettext, *args, **kwargs)

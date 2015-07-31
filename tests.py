@@ -23,7 +23,7 @@ def app(loop):
 def test_translate(app, client):
 
     @app.register('/')
-    def success(request):
+    def index(request):
         return app.ps.babel.gettext('Hello World!')
 
     response = client.get('/')
@@ -31,3 +31,12 @@ def test_translate(app, client):
 
     response = client.get('/?lang=ru')
     assert response.text == 'Привет, Мир!'
+
+    ls = app.ps.babel.lazy_gettext('Welcome!')
+
+    @app.register('/lazy')
+    def lazy(request):
+        return ls
+
+    response = client.get('/lazy?lang=ru')
+    assert response.text == 'Добро пожаловать!'
