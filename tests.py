@@ -10,7 +10,7 @@ def app(loop):
         PLUGINS=['muffin_jinja2', 'muffin_babel'],
 
         BABEL_CONFIGURE_JINJA2=True,
-        BABEL_LOCALES_DIR='example/locales',
+        BABEL_LOCALES_DIRS=['example/locales'],
     )
 
     @app.ps.babel.locale_selector

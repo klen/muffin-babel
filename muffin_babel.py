@@ -62,10 +62,10 @@ class Plugin(BasePlugin):
 
     name = 'babel'
     defaults = {
-        'configure_jinja2': False,  # install i18n support in muffin-jinja2
-        'default_locale': 'en',     # default locale
-        'domain': None,             # default domain (app.name)
-        'locales_dir': 'locales',   # where compiled locales are leaving
+        'configure_jinja2': True,       # install i18n support in muffin-jinja2
+        'default_locale': 'en',         # default locale
+        'domain': 'messages',           # default domain (app.name)
+        'locales_dirs': ['locales'],    # where compiled locales are leaving
         'sources_map': [
             ('**.py', 'python'),
             ('**.html', 'jinja2'),
@@ -84,10 +84,6 @@ class Plugin(BasePlugin):
         """ Setup the plugin's commands. """
         super(Plugin, self).setup(app)
 
-        # Set default domain
-        if not self.cfg.domain:
-            self.cfg.domain = self.app.name
-
         @app.manage.command
         def extract_messages(
                 dirname, project='', version='', charset='utf-8', domain=self.cfg.domain,
@@ -96,7 +92,6 @@ class Plugin(BasePlugin):
 
             :param charset: charset to use in the output
             :param domain:  set domain name for locales
-            :param output: write PO template file to destination
             :param project: set project name in output
             :param version: set project version in output
 
@@ -113,8 +108,8 @@ class Plugin(BasePlugin):
                 catalog.add(message, None, [(filepath, lineno)],
                             auto_comments=comments, context=context)
 
-            output = os.path.join(
-                self.cfg.locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
+            locales_dir = self.cfg.locales_dirs[-1]
+            output = os.path.join(locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
 
             if os.path.exists(output):
                 with open(output, 'rb') as f:
@@ -140,20 +135,21 @@ class Plugin(BasePlugin):
             :param domain:  set domain name for locales
 
             """
-            for locale in os.listdir(self.cfg.locales_dir):
-                po_file = os.path.join(self.cfg.locales_dir, locale, 'LC_MESSAGES', domain + '.po')
+            for locales_dir in self.cfg.locales_dirs:
+                for locale in os.listdir(locales_dir):
+                    po_file = os.path.join(locales_dir, locale, 'LC_MESSAGES', domain + '.po')
 
-                if not os.path.exists(po_file):
-                    continue
+                    if not os.path.exists(po_file):
+                        continue
 
-                with open(po_file, 'r') as po:
-                    catalog = read_po(po, locale)
+                    with open(po_file, 'r') as po:
+                        catalog = read_po(po, locale)
 
-                mo_file = os.path.join(self.cfg.locales_dir, locale, 'LC_MESSAGES', domain + '.mo')
+                    mo_file = os.path.join(locales_dir, locale, 'LC_MESSAGES', domain + '.mo')
 
-                with open(mo_file, 'wb') as mo:
-                    logger.info('writing MO template file to %s' % mo_file)
-                    write_mo(mo, catalog, use_fuzzy=use_fuzzy)
+                    with open(mo_file, 'wb') as mo:
+                        logger.info('writing MO template file to %s' % mo_file)
+                        write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
     def start(self, app):
         """ Initialize a local namespace. """
@@ -178,6 +174,28 @@ class Plugin(BasePlugin):
             return (yield from handler(request))
 
         return middleware
+
+    def get_translations(self, domain=None, locales_dir=None):
+        """ Load translations for given or configuration domain. """
+        if self.local is None or not hasattr(self.local, 'babel_locale'):
+            return support.NullTranslations()
+
+        if domain is None:
+            domain = self.cfg.domain
+
+        if not hasattr(self.local, 'babel_translations_%s' % domain):
+            translations = None
+            for locales_dir in reversed(self.cfg.locales_dirs):
+                trans = support.Translations.load(
+                    locales_dir, locales=self.local.babel_locale, domain=domain)
+                if translations:
+                    translations._catalog.update(trans._catalog)
+                else:
+                    translations = trans
+
+            setattr(self.local, 'babel_translations_%s' % domain, translations)
+
+        return getattr(self.local, 'babel_translations_%s' % domain)
 
     def locale_selector(self, func):
         """ Initialize a locale selector function. """
@@ -205,27 +223,12 @@ class Plugin(BasePlugin):
 
         return ulocales[0][1]
 
-    def get_translations(self, domain=None, locales_dir=None):
-        """ Load translations for given or configuration domain. """
-        if self.local is None or not hasattr(self.local, 'babel_locale'):
-            return support.NullTranslations()
-
-        if domain is None:
-            domain = self.cfg.domain
-
-        if not hasattr(self.local, 'babel_translations_%s' % domain):
-            setattr(self.local, 'babel_translations_%s' % domain, support.Translations.load(
-                locales_dir or self.cfg.locales_dir,
-                locales=self.local.babel_locale, domain=domain))
-
-        return getattr(self.local, 'babel_translations_%s' % domain)
-
-    def gettext(self, string, domain=None, locales_dir=None, **variables):
+    def gettext(self, string, domain=None, **variables):
         """Translate a string with the current locale."""
-        t = self.get_translations(domain, locales_dir)
+        t = self.get_translations(domain)
         return t.ugettext(string) % variables
 
-    def ngettext(self, singular, plural, num, domain=None, locales_dir=None, **variables):
+    def ngettext(self, singular, plural, num, domain=None, **variables):
         """Translate a string wity the current locale.
 
         The `num` parameter is used to dispatch between singular and various plural forms
@@ -233,19 +236,18 @@ class Plugin(BasePlugin):
 
         """
         variables.setdefault('num', num)
-        t = self.get_translations(domain, locales_dir)
+        t = self.get_translations(domain)
         return t.ungettext(singular, plural, num) % variables
 
-    def pgettext(self, context, string, domain=None, locales_dir=None, **variables):
+    def pgettext(self, context, string, domain=None, **variables):
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
         return t.upgettext(context, string) % variables
 
-    def npgettext(self, context, singular, plural, num, domain=None, locales_dir=None,
-                  **variables):
+    def npgettext(self, context, singular, plural, num, domain=None, **variables):
         """Like :meth:`ngettext` but with a context."""
         variables.setdefault('num', num)
-        t = self.get_translations(domain, locales_dir)
+        t = self.get_translations(domain)
         return t.unpgettext(context, singular, plural, num) % variables
 
     def lazy_gettext(self, *args, **kwargs):
