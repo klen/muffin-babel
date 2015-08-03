@@ -108,7 +108,7 @@ class Plugin(BasePlugin):
                 catalog.add(message, None, [(filepath, lineno)],
                             auto_comments=comments, context=context)
 
-            locales_dir = self.cfg.locales_dirs[-1]
+            locales_dir = self.cfg.locales_dirs[0]
             output = os.path.join(locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
 
             if os.path.exists(output):
