@@ -1,4 +1,4 @@
-""" Muffin-Babel -- I18n engine for Muffin framework. """
+"""Muffin-Babel -- I18n engine for Muffin framework."""
 
 import asyncio
 import re
@@ -44,7 +44,7 @@ accept_re = re.compile(
 
 
 def parse_accept_header(header):
-    """ Parse accept headers. """
+    """Parse accept headers."""
     result = []
     for match in accept_re.finditer(header):
         quality = match.group(2)
@@ -58,7 +58,7 @@ def parse_accept_header(header):
 
 class Plugin(BasePlugin):
 
-    """ The class is used to control the babel integration to Muffin application. """
+    """The class is used to control the babel integration to Muffin application."""
 
     name = 'babel'
     defaults = {
@@ -81,20 +81,19 @@ class Plugin(BasePlugin):
     locale_selector_func = None
 
     def setup(self, app):
-        """ Setup the plugin's commands. """
+        """Setup the plugin's commands."""
         super(Plugin, self).setup(app)
 
         @app.manage.command
         def extract_messages(
                 dirname, project='', version='', charset='utf-8', domain=self.cfg.domain,
                 locale=self.cfg.default_locale):
-            """ Extract messages from source code.
+            """Extract messages from source code.
 
             :param charset: charset to use in the output
             :param domain:  set domain name for locales
             :param project: set project name in output
             :param version: set project version in output
-
             """
             Locale.parse(locale)
 
@@ -120,7 +119,7 @@ class Plugin(BasePlugin):
             if not os.path.exists(os.path.dirname(output)):
                 os.makedirs(os.path.dirname(output))
 
-            logger.info('writing PO template file to %s' % output)
+            logger.info('writing PO template file to %s', output)
             outfile = open(output, 'wb')
 
             try:
@@ -130,10 +129,9 @@ class Plugin(BasePlugin):
 
         @app.manage.command
         def compile_messages(use_fuzzy=False, statistics=False, domain=self.cfg.domain):
-            """ Compile messages for locales.
+            """Compile messages for locales.
 
             :param domain:  set domain name for locales
-
             """
             for locales_dir in self.cfg.locales_dirs:
                 for locale in os.listdir(locales_dir):
@@ -148,11 +146,11 @@ class Plugin(BasePlugin):
                     mo_file = os.path.join(locales_dir, locale, 'LC_MESSAGES', domain + '.mo')
 
                     with open(mo_file, 'wb') as mo:
-                        logger.info('writing MO template file to %s' % mo_file)
+                        logger.info('writing MO template file to %s', mo_file)
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
     def start(self, app):
-        """ Initialize a local namespace. """
+        """Initialize a local namespace."""
         self.local = slocal(app.loop)
         if self.cfg.configure_jinja2 and 'jinja2' in app.ps:
             app.ps.jinja2.env.add_extension('jinja2.ext.i18n')
@@ -164,7 +162,7 @@ class Plugin(BasePlugin):
 
     @asyncio.coroutine
     def middleware_factory(self, app, handler):
-        """ Set locale from request. """
+        """Set locale from request."""
         if not self.locale_selector_func:
             return handler
 
@@ -176,7 +174,7 @@ class Plugin(BasePlugin):
         return middleware
 
     def get_translations(self, domain=None, locales_dir=None):
-        """ Load translations for given or configuration domain. """
+        """Load translations for given or configuration domain."""
         if self.local is None or not hasattr(self.local, 'babel_locale'):
             return support.NullTranslations()
 
@@ -198,7 +196,7 @@ class Plugin(BasePlugin):
         return getattr(self.local, 'babel_translations_%s' % domain)
 
     def locale_selector(self, func):
-        """ Initialize a locale selector function. """
+        """Initialize a locale selector function."""
         self.locale_selector_func = func
 
     def select_locale_by_request(self, request, locales=()):
@@ -216,7 +214,7 @@ class Plugin(BasePlugin):
         ulocales.reverse()
 
         for locale in locales:
-            for q, ulocale in ulocales:
+            for _, ulocale in ulocales:
                 ulocale = locale_delim_re.split(ulocale)[0]
                 if ulocale.lower() == locale.lower():
                     return ulocale
@@ -257,3 +255,5 @@ class Plugin(BasePlugin):
     def lazy_pgettext(self, *args, **kwargs):
         """Like :meth:`pgettext` but the string returned is lazy."""
         return make_lazy_string(self.pgettext, *args, **kwargs)
+
+#  pylama:ignore=W0212
