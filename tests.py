@@ -38,5 +38,8 @@ def test_translate(app, client):
     def lazy(request):
         return ls
 
+    response = client.get('/lazy')
+    assert response.text == 'Welcome!'
+
     response = client.get('/lazy?lang=ru')
     assert response.text == 'Добро пожаловать!'

@@ -71,8 +71,13 @@ $(VIRTUALENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
 	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
 	@touch $(VIRTUAL_ENV)/bin/py.test
 
+.PHONY: run
+# target: run - Run example
+run: $(VIRTUAL_ENV)/bin/muffin
+	@$(VIRTUAL_ENV)/bin/muffin example run --timeout=600
+
 .PHONY: test
-# target: test - Runs tests
+# target: test - Run tests
 test: $(VIRTUAL_ENV)/bin/py.test
 	@$(VIRTUAL_ENV)/bin/py.test -xs tests.py
 

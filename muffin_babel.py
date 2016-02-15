@@ -26,21 +26,21 @@ logger.addHandler(logging.NullHandler())
 
 locale_delim_re = re.compile(r'[_-]')
 accept_re = re.compile(
-    r'''(                       # media-range capturing-parenthesis
-              [^\s;,]+              # type/subtype
-              (?:[ \t]*;[ \t]*      # ";"
-                (?:                 # parameter non-capturing-parenthesis
-                  [^\s;,q][^\s;,]*  # token that doesn't start with "q"
-                |                   # or
-                  q[^\s;,=][^\s;,]* # token that is more than just "q"
-                )
-              )*                    # zero or more parameters
-            )                       # end of media-range
-            (?:[ \t]*;[ \t]*q=      # weight is a "q" parameter
-              (\d*(?:\.\d+)?)       # qvalue capturing-parentheses
-              [^,]*                 # "extension" accept params: who cares?
-            )?                      # accept params are optional
-        ''', re.VERBOSE)
+    r'''(                         # media-range capturing-parenthesis
+            [^\s;,]+              # type/subtype
+            (?:[ \t]*;[ \t]*      # ";"
+            (?:                   # parameter non-capturing-parenthesis
+                [^\s;,q][^\s;,]*  # token that doesn't start with "q"
+            |                     # or
+                q[^\s;,=][^\s;,]* # token that is more than just "q"
+            )
+            )*                    # zero or more parameters
+        )                         # end of media-range
+        (?:[ \t]*;[ \t]*q=        # weight is a "q" parameter
+            (\d*(?:\.\d+)?)       # qvalue capturing-parentheses
+            [^,]*                 # "extension" accept params: who cares?
+        )?                        # accept params are optional
+    ''', re.VERBOSE)
 
 
 def parse_accept_header(header):
@@ -83,9 +83,11 @@ class Plugin(BasePlugin):
     def setup(self, app):
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app)
+        if isinstance(self.cfg['locales_dirs'], str):
+            self.cfg['locales_dirs'] = [self.cfg['locales_dirs']]
 
         @app.manage.command
-        def extract_messages(
+        def extract_messages(   # noqa
                 dirname, project='', version='', charset='utf-8', domain=self.cfg.domain,
                 locale=self.cfg.default_locale):
             """Extract messages from source code.
@@ -128,7 +130,7 @@ class Plugin(BasePlugin):
                 outfile.close()
 
         @app.manage.command
-        def compile_messages(use_fuzzy=False, statistics=False, domain=self.cfg.domain):
+        def compile_messages(use_fuzzy=False, statistics=False, domain=self.cfg.domain): # noqa
             """Compile messages for locales.
 
             :param domain:  set domain name for locales
@@ -150,7 +152,7 @@ class Plugin(BasePlugin):
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
     def start(self, app):
-        """Initialize a local namespace."""
+        """Initialize a local namespace and setup Jinja2."""
         self.local = slocal(app.loop)
         if self.cfg.configure_jinja2 and 'jinja2' in app.ps:
             app.ps.jinja2.env.add_extension('jinja2.ext.i18n')
@@ -168,7 +170,8 @@ class Plugin(BasePlugin):
 
         @asyncio.coroutine
         def middleware(request):
-            self.local.babel_locale = Locale.parse(self.locale_selector_func(request))
+            locale = Locale.parse(self.locale_selector_func(request))
+            self.local.babel_locale = locale
             return (yield from handler(request))
 
         return middleware
@@ -229,8 +232,8 @@ class Plugin(BasePlugin):
     def ngettext(self, singular, plural, num, domain=None, **variables):
         """Translate a string wity the current locale.
 
-        The `num` parameter is used to dispatch between singular and various plural forms
-        of the message.
+        The `num` parameter is used to dispatch between singular and various plural forms of the
+        message.
 
         """
         variables.setdefault('num', num)

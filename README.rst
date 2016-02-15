@@ -76,6 +76,16 @@ code: ::
         return app.ps.babel.gettext('Hello!')
 
 
+Jinja2
+------
+
+The `Muffin-Babel` has integration with `Muffin-Jinja2`, so if you have
+`muffin_jinja2` plugin enabled, the plugin provides `gettext` and `ngettext`
+function in Jinja2 templates' context.
+
+.. note:: `muffin_jinja2` should be enabled before `muffin_babel` in your application configuration.
+
+
 Options
 -------
 
