@@ -1,9 +1,8 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
-
 import asyncio
-import re
-import os
 import logging
+import os
+import re
 
 from babel import Locale, support
 from babel.messages.extract import extract_from_dir
@@ -56,6 +55,20 @@ def parse_accept_header(header):
     return result
 
 
+@asyncio.coroutine
+def babel_middleware_factory(app, handler):
+    """Create middleware for babel."""
+    babel = app.ps.babel
+
+    @asyncio.coroutine
+    def babel_middleware(request):
+        locale = Locale.parse(babel.locale_selector_func(request))
+        babel.locale = locale
+        return (yield from handler(request))
+
+    return babel_middleware
+
+
 class Plugin(BasePlugin):
 
     """The class is used to control the babel integration to Muffin application."""
@@ -78,6 +91,7 @@ class Plugin(BasePlugin):
     }
 
     local = None
+    translations = {}
     locale_selector_func = None
 
     def setup(self, app):
@@ -162,45 +176,44 @@ class Plugin(BasePlugin):
                 newstyle=True
             )
 
-    @asyncio.coroutine
-    def middleware_factory(self, app, handler):
-        """Set locale from request."""
-        if not self.locale_selector_func:
-            return handler
-
-        @asyncio.coroutine
-        def middleware(request):
-            locale = Locale.parse(self.locale_selector_func(request))
-            self.local.babel_locale = locale
-            return (yield from handler(request))
-
-        return middleware
+        if self.locale_selector_func:
+            app.middlewares.append(babel_middleware_factory)
 
     def get_translations(self, domain=None, locales_dir=None):
         """Load translations for given or configuration domain."""
-        if self.local is None or not hasattr(self.local, 'babel_locale'):
+        if self.locale is None:
             return support.NullTranslations()
 
         if domain is None:
             domain = self.cfg.domain
 
-        if not hasattr(self.local, 'babel_translations_%s' % domain):
+        if (domain, self.locale.language) not in self.translations:
             translations = None
             for locales_dir in reversed(self.cfg.locales_dirs):
                 trans = support.Translations.load(
-                    locales_dir, locales=self.local.babel_locale, domain=domain)
+                    locales_dir, locales=self.locale, domain=domain)
                 if translations:
                     translations._catalog.update(trans._catalog)
                 else:
                     translations = trans
 
-            setattr(self.local, 'babel_translations_%s' % domain, translations)
+            self.translations[(domain, self.locale.language)] = translations
 
-        return getattr(self.local, 'babel_translations_%s' % domain)
+        return self.translations[(domain, self.locale.language)]
 
     def locale_selector(self, func):
         """Initialize a locale selector function."""
         self.locale_selector_func = func
+
+    @property
+    def locale(self):
+        """Return current locale."""
+        return getattr(self.local, 'babel_locale', None)
+
+    @locale.setter
+    def locale(self, value):
+        """Set current locale."""
+        self.local.babel_locale = value
 
     def select_locale_by_request(self, request, locales=()):
         """Choose an user's locales by request."""
