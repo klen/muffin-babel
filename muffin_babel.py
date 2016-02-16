@@ -88,8 +88,8 @@ class Plugin(BasePlugin):
 
         @app.manage.command
         def extract_messages(   # noqa
-                dirname, project='', version='', charset='utf-8', domain=self.cfg.domain,
-                locale=self.cfg.default_locale):
+                dirname, project=app.name, version=app.cfg.get('VERSION', ''),
+                charset='utf-8', domain=self.cfg.domain, locale=self.cfg.default_locale):
             """Extract messages from source code.
 
             :param charset: charset to use in the output
