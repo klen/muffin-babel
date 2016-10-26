@@ -3,4 +3,4 @@
 
 muffin-jinja2==0.1.1
 pytest==3.0.3
-webtest
+webtest==2.0.23
