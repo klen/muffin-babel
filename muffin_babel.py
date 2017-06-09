@@ -4,14 +4,14 @@ import logging
 import os
 import re
 
-from babel import Locale, support
-from babel.messages.extract import extract_from_dir
-from babel.messages.frontend import Catalog
-from babel.messages.mofile import write_mo
-from babel.messages.pofile import write_po, read_po
+from babel import Locale, support                   # noqa
+from babel.messages.extract import extract_from_dir # noqa
+from babel.messages.frontend import Catalog         # noqa
+from babel.messages.mofile import write_mo          # noqa
+from babel.messages.pofile import write_po, read_po # noqa
 from muffin.plugins import BasePlugin
 from muffin.utils import slocal
-from speaklater import make_lazy_string
+from speaklater import make_lazy_string             # noqa
 
 
 __version__ = "0.2.0"
@@ -70,7 +70,6 @@ def babel_middleware_factory(app, handler):
 
 
 class Plugin(BasePlugin):
-
     """The class is used to control the babel integration to Muffin application."""
 
     name = 'babel'
@@ -102,7 +101,7 @@ class Plugin(BasePlugin):
 
         @app.manage.command
         def extract_messages(   # noqa
-                dirname, project=app.name, version=app.cfg.get('VERSION', ''),
+                dirname, project=app.name, version=app.cfg.get('VERSION', ''), locations=True,
                 charset='utf-8', domain=self.cfg.domain, locale=self.cfg.default_locale):
             """Extract messages from source code.
 
@@ -110,6 +109,7 @@ class Plugin(BasePlugin):
             :param domain:  set domain name for locales
             :param project: set project name in output
             :param version: set project version in output
+            :param locations: add message locations
             """
             Locale.parse(locale)
 
@@ -119,9 +119,13 @@ class Plugin(BasePlugin):
             catalog = Catalog(locale=locale, project=project, version=version, charset=charset)
             for filename, lineno, message, comments, context in extract_from_dir(
                     dirname, method_map=self.cfg.sources_map, options_map=self.cfg.options_map):
-                filepath = os.path.normpath(os.path.join(dirname, filename))
-                catalog.add(message, None, [(filepath, lineno)],
-                            auto_comments=comments, context=context)
+
+                lines = []
+                if locations:
+                    filepath = os.path.normpath(os.path.join(dirname, filename))
+                    lines = [(filepath, lineno)]
+
+                catalog.add(message, None, lines, auto_comments=comments, context=context)
 
             locales_dir = self.cfg.locales_dirs[0]
             output = os.path.join(locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
@@ -179,27 +183,35 @@ class Plugin(BasePlugin):
         if self.locale_selector_func:
             app.middlewares.append(babel_middleware_factory)
 
-    def get_translations(self, domain=None, locales_dir=None):
-        """Load translations for given or configuration domain."""
-        if self.locale is None:
-            return support.NullTranslations()
+    def get_translations(self, domain=None, locale=None):
+        """Load translations for given or configuration domain.
+
+        :param domain: Messages domain (str)
+        :param locale: Locale object
+        """
+        if locale is None:
+
+            if self.locale is None:
+                return support.NullTranslations()
+
+            locale = self.locale
 
         if domain is None:
             domain = self.cfg.domain
 
-        if (domain, self.locale.language) not in self.translations:
+        if (domain, locale.language) not in self.translations:
             translations = None
             for locales_dir in reversed(self.cfg.locales_dirs):
                 trans = support.Translations.load(
-                    locales_dir, locales=self.locale, domain=domain)
+                    locales_dir, locales=locale, domain=domain)
                 if translations:
                     translations._catalog.update(trans._catalog)
                 else:
                     translations = trans
 
-            self.translations[(domain, self.locale.language)] = translations
+            self.translations[(domain, locale.language)] = translations
 
-        return self.translations[(domain, self.locale.language)]
+        return self.translations[(domain, locale.language)]
 
     def locale_selector(self, func):
         """Initialize a locale selector function."""
