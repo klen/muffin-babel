@@ -3,11 +3,9 @@ import pytest
 
 
 @pytest.fixture(scope='session')
-def app(loop):
+def app():
     app = muffin.Application(
-        'babel', loop=loop,
-
-        PLUGINS=['muffin_jinja2', 'muffin_babel'],
+        'babel', PLUGINS=['muffin_jinja2', 'muffin_babel'],
 
         BABEL_CONFIGURE_JINJA2=True,
         BABEL_LOCALES_DIRS=['example/locales'],
@@ -15,31 +13,35 @@ def app(loop):
 
     @app.ps.babel.locale_selector
     def get_locale(request):
-        return request.GET.get('lang', 'en')
-
-    return app
-
-
-def test_translate(app, client):
+        return request.query.get('lang', 'en')
 
     @app.register('/')
     def index(request):
         return app.ps.babel.gettext('Hello World!')
 
-    response = client.get('/')
-    assert 'Hello World!' in response.text
-
-    response = client.get('/?lang=ru')
-    assert response.text == 'Привет, Мир!'
-
     ls = app.ps.babel.lazy_gettext('Welcome!')
 
     @app.register('/lazy')
     def lazy(request):
-        return ls
+        return str(ls)
 
-    response = client.get('/lazy')
-    assert response.text == 'Welcome!'
+    return app
 
-    response = client.get('/lazy?lang=ru')
-    assert response.text == 'Добро пожаловать!'
+
+async def test_translate(client):
+
+    async with client.get('/', raise_for_status=True) as resp:
+        text = await resp.text()
+        assert 'Hello World!' in text
+
+    async with client.get('/?lang=ru', raise_for_status=True) as resp:
+        text = await resp.text()
+        assert text == 'Привет, Мир!'
+
+    async with client.get('/lazy', raise_for_status=True) as resp:
+        text = await resp.text()
+        assert text == 'Welcome!'
+
+    async with client.get('/lazy?lang=ru', raise_for_status=True) as resp:
+        text = await resp.text()
+        assert text == 'Добро пожаловать!'

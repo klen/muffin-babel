@@ -1,5 +1,4 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
-import asyncio
 import logging
 import os
 import re
@@ -53,20 +52,6 @@ def parse_accept_header(header):
             quality = max(min(float(quality), 1), 0)
         result.append((match.group(1), quality))
     return result
-
-
-@asyncio.coroutine
-def babel_middleware_factory(app, handler):
-    """Create middleware for babel."""
-    babel = app.ps.babel
-
-    @asyncio.coroutine
-    def babel_middleware(request):
-        locale = Locale.parse(babel.locale_selector_func(request))
-        babel.locale = locale
-        return (yield from handler(request))
-
-    return babel_middleware
 
 
 class Plugin(BasePlugin):
@@ -169,7 +154,7 @@ class Plugin(BasePlugin):
                         logger.info('writing MO template file to %s', mo_file)
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
-    def start(self, app):
+    async def startup(self, app):
         """Initialize a local namespace and setup Jinja2."""
         self.local = slocal(app.loop)
         if self.cfg.configure_jinja2 and 'jinja2' in app.ps:
@@ -181,7 +166,14 @@ class Plugin(BasePlugin):
             )
 
         if self.locale_selector_func:
-            app.middlewares.append(babel_middleware_factory)
+            app.middlewares.append(self._middleware)
+
+    async def _middleware(self, request, handler):
+        locale = Locale.parse(self.locale_selector_func(request))
+        self.locale = locale
+        return await handler(request)
+
+    _middleware.__middleware_version__ = 1
 
     def get_translations(self, domain=None, locale=None):
         """Load translations for given or configuration domain.

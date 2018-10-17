@@ -1,3 +1,11 @@
 <h1>{{ gettext('Welcome!') }}</h1>
 
 <b>{{ message }}</b>
+
+( See in
+{% if 'en' == app.ps.babel.locale.language %}
+    <a href="./?lang=ru">Russian</a>
+{% else %}
+    <a href="./?lang=en">English</a>
+{% endif %}
+)

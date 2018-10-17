@@ -25,7 +25,7 @@ _ = app.ps.babel.gettext
 @app.ps.babel.locale_selector
 def set_locale(request):
     """Return locale from GET lang param or automatically."""
-    return request.GET.get('lang', app.ps.babel.select_locale_by_request(request))
+    return request.query.get('lang', app.ps.babel.select_locale_by_request(request))
 
 
 @app.register('/')

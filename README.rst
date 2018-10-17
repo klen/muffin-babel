@@ -26,7 +26,7 @@ Muffin-Babel -- an extension to Muffin_ that adds localization support with help
 Requirements
 =============
 
-- python >= 3.3
+- python >= 3.5.3
 
 .. _installation:
 
@@ -144,14 +144,6 @@ License
 =======
 
 Licensed under a `MIT license`_.
-
-If you wish to express your appreciation for the project, you are welcome to send
-a postcard to: ::
-
-    Kirill Klenov
-    pos. Severny 8-3
-    MO, Istra, 143500
-    Russia
 
 .. _links:
 

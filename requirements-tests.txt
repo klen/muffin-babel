@@ -3,4 +3,3 @@
 
 muffin-jinja2
 pytest
-webtest
