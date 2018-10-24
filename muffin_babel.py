@@ -86,7 +86,7 @@ class Plugin(BasePlugin):
 
         @app.manage.command
         def extract_messages(   # noqa
-                dirname, project=app.name, version=app.cfg.get('VERSION', ''), locations=True,
+                *dirnames, project=app.name, version=app.cfg.get('VERSION', ''), locations=True,
                 charset='utf-8', domain=self.cfg.domain, locale=self.cfg.default_locale):
             """Extract messages from source code.
 
@@ -98,19 +98,19 @@ class Plugin(BasePlugin):
             """
             Locale.parse(locale)
 
-            if not os.path.isdir(dirname):
-                raise SystemExit('%r is not a directory' % dirname)
+            dirnames = [d for d in dirnames if os.path.isdir(d)]
 
             catalog = Catalog(locale=locale, project=project, version=version, charset=charset)
-            for filename, lineno, message, comments, context in extract_from_dir(
-                    dirname, method_map=self.cfg.sources_map, options_map=self.cfg.options_map):
+            for dname in dirnames:
+                for filename, lineno, message, comments, context in extract_from_dir(
+                        dname, method_map=self.cfg.sources_map, options_map=self.cfg.options_map):
 
-                lines = []
-                if locations:
-                    filepath = os.path.normpath(os.path.join(dirname, filename))
-                    lines = [(filepath, lineno)]
+                    lines = []
+                    if locations:
+                        filepath = os.path.normpath(os.path.join(dname, filename))
+                        lines = [(filepath, lineno)]
 
-                catalog.add(message, None, lines, auto_comments=comments, context=context)
+                    catalog.add(message, None, lines, auto_comments=comments, context=context)
 
             locales_dir = self.cfg.locales_dirs[0]
             output = os.path.join(locales_dir, locale, 'LC_MESSAGES', '%s.po' % domain)
