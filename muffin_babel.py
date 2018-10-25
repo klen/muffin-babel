@@ -217,6 +217,8 @@ class Plugin(BasePlugin):
     @locale.setter
     def locale(self, value):
         """Set current locale."""
+        if not isinstance(value, Locale):
+            value = Locale.parse(value)
         self.local.babel_locale = value
 
     def select_locale_by_request(self, request, locales=()):
