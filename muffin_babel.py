@@ -84,7 +84,7 @@ class Plugin(BasePlugin):
         if isinstance(self.cfg['locales_dirs'], str):
             self.cfg['locales_dirs'] = [self.cfg['locales_dirs']]
 
-        @app.manage.command
+        @app.manage.command(init=False)
         def extract_messages(   # noqa
                 *dirnames, project=app.name, version=app.cfg.get('VERSION', ''), locations=True,
                 charset='utf-8', domain=self.cfg.domain, locale=self.cfg.default_locale):
@@ -132,7 +132,7 @@ class Plugin(BasePlugin):
             finally:
                 outfile.close()
 
-        @app.manage.command
+        @app.manage.command(init=False)
         def compile_messages(use_fuzzy=False, statistics=False, domain=self.cfg.domain): # noqa
             """Compile messages for locales.
 
