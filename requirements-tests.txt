@@ -1,5 +1,5 @@
 -r requirements.txt
 -e .
 
-muffin-jinja2
+muffin-jinja2==0.2.0
 pytest
