@@ -128,7 +128,8 @@ class Plugin(BasePlugin):
             outfile = open(output, 'wb')
 
             try:
-                write_po(outfile, catalog, include_previous=True)
+                write_po(outfile, catalog, include_previous=True,
+                         sort_output=not locations, sort_by_file=locations)
             finally:
                 outfile.close()
 
