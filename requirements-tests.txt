@@ -2,4 +2,4 @@
 -e .
 
 muffin-jinja2==0.2.0
-pytest==4.0.0
+pytest==5.2.1
