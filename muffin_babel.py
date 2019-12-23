@@ -233,6 +233,9 @@ class Plugin(BasePlugin):
             (q, locale_delim_re.split(v)[0])
             for v, q in parse_accept_header(request.headers['ACCEPT-LANGUAGE'])
         ]
+        if not ulocales:
+            return default_locale
+
         ulocales.sort()
         ulocales.reverse()
 
