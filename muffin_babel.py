@@ -13,7 +13,7 @@ from muffin.utils import slocal
 from speaklater import make_lazy_string             # noqa
 
 
-__version__ = "0.4.5"
+__version__ = "0.4.6"
 __project__ = "muffin-babel"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
