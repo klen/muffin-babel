@@ -69,14 +69,12 @@ Setup a locale selector function (by default the plugin is parsing ``accept-lang
 .. code-block:: python
 
     @babel.locale_selector
-    def get_locale(request, default_locale='en'):
+    async def get_locale(request, default_locale='en'):
         """ Return locale either from request.query or from request headers. """
-        return request.query.get(
-            'lang',
-
-            # Get locale from headers
-            muffin_babel.select_locale_by_request(request, default_locale)
-        )
+        locale = request.query.get('lang')
+        if not locale:
+            return await muffin_babel.select_locale_by_request(request, default)
+        return locale
 
 Use `babel.gettext`, `babel.pgettext` callables in your code:
 

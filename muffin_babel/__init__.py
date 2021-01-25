@@ -13,6 +13,7 @@ from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import write_po, read_po
 from muffin.plugin import BasePlugin
+from asgi_tools.utils import to_awaitable
 
 
 __version__ = "0.4.6"
@@ -24,8 +25,8 @@ __license__ = "MIT"
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-TYPE_LOCALE_SELECTOR = \
-    t.Optional[t.Callable[[muffin.Request, str], t.Coroutine[t.Any, t.Any, str]]]
+
+F = t.TypeVar('F', bound=t.Callable[[muffin.Request, str], t.Coroutine[t.Any, t.Any, str]])
 
 TRANSLATIONS: t.Dict[t.Tuple[str, str], support.Translations] = {}
 
@@ -55,7 +56,7 @@ class Plugin(BasePlugin):
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
-        self.__locale_selector: TYPE_LOCALE_SELECTOR = select_locale_by_request
+        self.__locale_selector: t.Optional[t.Callable[[muffin.Request, str], t.Coroutine[t.Any, t.Any, str]]] = select_locale_by_request  # noqa
 
         # Install a middleware for autodetection
         if self.cfg.auto_detect_locale:
@@ -149,9 +150,9 @@ class Plugin(BasePlugin):
                 newstyle=True
             )
 
-    def locale_selector(self, fn: TYPE_LOCALE_SELECTOR) -> TYPE_LOCALE_SELECTOR:
+    def locale_selector(self, fn: F) -> F:
         """Update self locale selector."""
-        self.__locale_selector = fn
+        self.__locale_selector = to_awaitable(fn)
         return fn
 
     async def select_locale(self, request: muffin.Request):

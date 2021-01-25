@@ -11,9 +11,12 @@ babel = muffin_babel.Plugin(app, locale_folders=['example/locales'])
 
 
 @babel.locale_selector
-def set_locale(request, default='en'):
+async def get_locale(request, default='en'):
     """Return locale from GET lang param or automatically."""
-    return request.query.get('lang', muffin_babel.select_locale_by_request(request, default))
+    locale = request.query.get('lang')
+    if not locale:
+        return await muffin_babel.select_locale_by_request(request, default)
+    return locale
 
 
 @app.route('/')

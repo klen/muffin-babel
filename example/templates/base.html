@@ -3,7 +3,7 @@
 <b>{{ message }}</b>
 
 ( See in
-{% if 'en' == app.ps.babel.locale.language %}
+{% if 'en' == app.plugins.babel.current_locale.language %}
     <a href="./?lang=ru">Russian</a>
 {% else %}
     <a href="./?lang=en">English</a>
