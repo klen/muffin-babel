@@ -16,7 +16,7 @@ from muffin.plugin import BasePlugin
 from asgi_tools.utils import to_awaitable
 
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 __project__ = "muffin-babel"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
