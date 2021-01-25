@@ -3,19 +3,17 @@ Muffin-Babel
 
 .. _description:
 
-Muffin-Babel -- an extension to Muffin_ that adds localization support with help of babel_.
+**Muffin-Babel** -- an extension to Muffin_ that adds localization support with help of Babel_.
 
 .. _badges:
 
-.. image:: http://img.shields.io/travis/klen/muffin-babel.svg?style=flat-square
-    :target: http://travis-ci.org/klen/muffin-babel
-    :alt: Build Status
+.. image:: https://github.com/klen/muffin-babel/workflows/tests/badge.svg
+    :target: https://github.com/klen/muffin-babel/actions
+    :alt: Tests Status
 
-.. image:: http://img.shields.io/pypi/v/muffin-babel.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/muffin-babel
-
-.. image:: http://img.shields.io/pypi/dm/muffin-babel.svg?style=flat-square
-    :target: https://pypi.python.org/pypi/muffin-babel
+.. image:: https://img.shields.io/pypi/v/muffin-babel
+    :target: https://pypi.org/project/muffin-babel/
+    :alt: PYPI Version
 
 .. _contents:
 
@@ -26,7 +24,7 @@ Muffin-Babel -- an extension to Muffin_ that adds localization support with help
 Requirements
 =============
 
-- python >= 3.5.3
+- python >= 3.8
 
 .. _installation:
 
@@ -42,38 +40,51 @@ Installation
 Usage
 =====
 
-Add **muffin_babel** to **PLUGINS** in your Muffin_ application config: ::
+Initialize and setup the plugin:
+
+.. code-block:: python
 
     import muffin
+    import muffin_babel
 
-    app = muffin.Application(
-        'example',
+    # Create Muffin Application
+    app = muffin.Application('example')
 
-        PLUGINS=(
-            'muffin_jinja2',
-            'muffin_babel',
-        )
-    
-    )
+    # Initialize the plugin
+    # As alternative: babel = muffin_babel.Plugin(app, **options)
+    babel = muffin_babel.Plugin()
+    babel.setup(app, template_folders=['src/templates'])
 
-Setup a locale selector function: ::
+    # Use it inside your handlers
+    @app.route('/')
+    async def index(request):
+        # Get current locale
+        assert babel.current_locale
+        # Translate a text
+        return babel.gettext('Hello World!')
 
-    @app.ps.babel.locale_selector
-    def set_locale(request):
-        """ Return locale from GET lang-param or automatically. """
-        return request.GET.get(
+
+Setup a locale selector function (by default the plugin is parsing ``accept-language`` header):
+
+.. code-block:: python
+
+    @babel.locale_selector
+    def get_locale(request, default_locale='en'):
+        """ Return locale either from request.query or from request headers. """
+        return request.query.get(
             'lang',
 
-            # Get locale based on user settings
-            app.ps.babel.select_locale_by_request(request)
+            # Get locale from headers
+            muffin_babel.select_locale_by_request(request, default_locale)
         )
 
-Use `app.ps.babel.gettext`, `app.ps.babel.pgettext`, `app.ps.babel.lazy_gettext` function in your
-code: ::
+Use `babel.gettext`, `babel.pgettext` callables in your code:
 
-    @app.register('/')
+.. code-block:: python
+
+    @app.route('/')
     def index(request):
-        return app.ps.babel.gettext('Hello!')
+        return babel.gettext('Hello!')
 
 
 Jinja2
@@ -81,21 +92,21 @@ Jinja2
 
 The `Muffin-Babel` has integration with `Muffin-Jinja2`, so if you have
 `muffin_jinja2` plugin enabled, the plugin provides `gettext` and `ngettext`
-function in Jinja2 templates' context.
-
-.. note:: `muffin_jinja2` should be enabled before `muffin_babel` in your application configuration.
+function inside the Jinja2 templates' context.
 
 
 Options
 -------
 
 ========================== ==============================================================
- *BABEL_CONFIGURE_JINJA2*   Install i18n support to Muffin-Jinja2_  (``True``)
- *BABEL_DEFAULT_LOCALE*     Set default locale (``en``)
- *BABEL_DOMAIN*             Set default domain (``messages``)
- *BABEL_LOCALES_DIRS*       List of directories where locales are leaving
- *BABEL_SOURCES_MAP*        Babel sources map
- *BABEL_OPTIONS_MAP*        Babel options map
+ Name                       Description (``default value``)
+========================== ==============================================================
+ *AUTO_DETECT_LOCALE*       Installs a middleware to automatically detect users locales (``True``)
+ *CONFIGURE_JINJA2*         Installs i18n support for jinja2 templates (through ``muffin-jinja``) (``True``)
+ *DEFAULT_LOCALE*           Default locale (``en``)
+ *DOMAIN*                   Default localization domain (``messages``)
+ *SOURCES_MAP*              Babel sources map
+ *OPTIONS_MAP*              Babel options map
 ========================== ==============================================================
 
 Commands
@@ -108,12 +119,12 @@ Extract messages
 
 Extract strings from your application to locales: ::
 
-    $ muffin app_module extract_messages [OPTIONS] appdir 
+    $ muffin app_package babel_extract_messages [OPTIONS] appdir 
 
 
 Translate ``.po`` files and compile translations: ::
     
-    $ muffin app_module compile_messages [OPTIONS]
+    $ muffin app_package babel_compile_messages [OPTIONS]
 
 
 .. _bugtracker:
@@ -141,7 +152,7 @@ Contributors
 .. _license:
 
 License
-=======
+========
 
 Licensed under a `MIT license`_.
 
@@ -151,6 +162,6 @@ Licensed under a `MIT license`_.
 .. _klen: https://github.com/klen
 .. _Muffin: https://github.com/klen/muffin
 .. _Muffin-Jinja2: https://github.com/klen/muffin-jinja2
-.. _babel: http://babel.edgewall.org/
+.. _Babel: http://babel.edgewall.org/
 
 .. _MIT license: http://opensource.org/licenses/MIT

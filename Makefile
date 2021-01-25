@@ -23,8 +23,7 @@ clean:
 VERSION?=minor
 # target: release - Bump version
 release:
-	@$(VIRTUAL_ENV)/bin/pip install bumpversion
-	@$(VIRTUAL_ENV)/bin/bumpversion $(VERSION)
+	@$(VIRTUAL_ENV)/bin/bump2version $(VERSION)
 	@git checkout master
 	@git merge develop
 	@git checkout develop
@@ -54,32 +53,35 @@ register:
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload: clean
-	@$(VIRTUAL_ENV)/bin/pip install twine wheel
-	@$(VIRTUAL_ENV)/bin/python setup.py sdist bdist_wheel
+	@$(VIRTUAL_ENV)/bin/python setup.py bdist_wheel
 	@$(VIRTUAL_ENV)/bin/twine upload dist/*
 
 # =============
 #  Development
 # =============
 
-$(VIRTUAL_ENV): requirements.txt
-	@[ -d $(VIRTUAL_ENV) ] || virtualenv --no-site-packages --python=python3 $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pip install -r requirements.txt
+$(VIRTUAL_ENV): setup.cfg
+	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pip install .[tests,build,example]
 	@touch $(VIRTUAL_ENV)
-
-$(VIRTUALENV)/bin/py.test: $(VIRTUAL_ENV) requirements-tests.txt
-	@$(VIRTUAL_ENV)/bin/pip install -r requirements-tests.txt
-	@touch $(VIRTUAL_ENV)/bin/py.test
 
 .PHONY: run
 # target: run - Run example
-run: $(VIRTUAL_ENV)/bin/muffin
-	@$(VIRTUAL_ENV)/bin/muffin example run --timeout=600
+run: $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/uvicorn --port 5000 --reload example:app
 
-.PHONY: test
+.PHONY: test t
 # target: test - Run tests
-test: $(VIRTUAL_ENV)/bin/py.test
-	@$(VIRTUAL_ENV)/bin/py.test -xs tests.py
+test t: $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/pytest tests.py
 
-.PHONY: t
-t: test
+.PHONY: mypy
+# target: mypy - Check types
+mypy: $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/mypy muffin_babel
+
+.PHONY: example
+# target: example - Run an example
+example: $(VIRTUAL_ENV)
+	@$(VIRTUAL_ENV)/bin/uvicorn --port 5000 --reload example:app
+

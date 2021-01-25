@@ -1,47 +1,58 @@
 import muffin
+import muffin_jinja2
 import pytest
 
 
-@pytest.fixture(scope='session')
-def app():
+@pytest.fixture(params=[
+    pytest.param('asyncio'),
+    pytest.param('trio'),
+], autouse=True)
+def anyio_backend(request):
+    return request.param
+
+
+async def test_babel():
+    from muffin_babel import Plugin as Babel
+
     app = muffin.Application(
-        'babel', PLUGINS=['muffin_jinja2', 'muffin_babel'],
+        'babel',
 
+        DEBUG=True,
         BABEL_CONFIGURE_JINJA2=True,
-        BABEL_LOCALES_DIRS=['example/locales'],
+        BABEL_LOCALE_FOLDERS=['example/locales'],
     )
+    jinja2 = muffin_jinja2.Plugin(app)
+    babel = Babel(app)
 
-    @app.ps.babel.locale_selector
-    def get_locale(request):
-        return request.query.get('lang', 'en')
+    await app.lifespan.__startup__()
 
-    @app.register('/')
-    def index(request):
-        return app.ps.babel.gettext('Hello World!')
+    @babel.locale_selector
+    async def get_locale_from_request(request, default):
+        return request.query.get('lang', default)
 
-    ls = app.ps.babel.lazy_gettext('Welcome!')
+    @app.route('/')
+    async def index(request):
+        assert babel.current_locale
+        return babel.gettext('Hello World!')
 
-    @app.register('/lazy')
-    def lazy(request):
-        return str(ls)
+    client = muffin.TestClient(app)
 
-    return app
+    res = await client.get('/')
+    assert res.text == 'Hello World!'
 
+    res = await client.get('/?lang=ru')
+    assert res.text == 'Привет, Мир!'
 
-async def test_translate(client):
+    from jinja2 import Template
 
-    async with client.get('/', raise_for_status=True) as resp:
-        text = await resp.text()
-        assert 'Hello World!' in text
+    template = Template("""{{ gettext('Hello World!') }}""")
 
-    async with client.get('/?lang=ru', raise_for_status=True) as resp:
-        text = await resp.text()
-        assert text == 'Привет, Мир!'
+    @app.route('/jinja')
+    async def jinja(request):
+        return await jinja2.render(template)
 
-    async with client.get('/lazy', raise_for_status=True) as resp:
-        text = await resp.text()
-        assert text == 'Welcome!'
+    res = await client.get('/jinja')
+    assert res.text == 'Hello World!'
 
-    async with client.get('/lazy?lang=ru', raise_for_status=True) as resp:
-        text = await resp.text()
-        assert text == 'Добро пожаловать!'
+    res = await client.get('/jinja?lang=ru')
+    assert res.text == 'Привет, Мир!'
