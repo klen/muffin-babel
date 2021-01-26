@@ -6,14 +6,14 @@ from numbers import Number
 
 import muffin
 from asgi_babel import current_locale, select_locale_by_request
-from asgi_tools.types import Receive, Send
+from asgi_tools._types import Receive, Send
+from asgi_tools.utils import to_awaitable
 from babel import Locale, support
 from babel.messages.extract import extract_from_dir
 from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import write_po, read_po
 from muffin.plugin import BasePlugin
-from asgi_tools.utils import to_awaitable
 
 
 __version__ = "0.5.2"

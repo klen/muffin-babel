@@ -38,10 +38,10 @@ async def test_babel():
     client = muffin.TestClient(app)
 
     res = await client.get('/')
-    assert res.text == 'Hello World!'
+    assert await res.text() == 'Hello World!'
 
     res = await client.get('/?lang=ru')
-    assert res.text == 'Привет, Мир!'
+    assert await res.text() == 'Привет, Мир!'
 
     from jinja2 import Template
 
@@ -52,7 +52,7 @@ async def test_babel():
         return await jinja2.render(template)
 
     res = await client.get('/jinja')
-    assert res.text == 'Hello World!'
+    assert await res.text() == 'Hello World!'
 
     res = await client.get('/jinja?lang=ru')
-    assert res.text == 'Привет, Мир!'
+    assert await res.text() == 'Привет, Мир!'
