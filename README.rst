@@ -15,6 +15,10 @@ Muffin-Babel
     :target: https://pypi.org/project/muffin-babel/
     :alt: PYPI Version
 
+.. image:: https://img.shields.io/pypi/pyversions/muffin-babel
+    :target: https://pypi.org/project/muffin-babel/
+    :alt: Python Versions
+
 .. _contents:
 
 .. contents::
@@ -24,7 +28,7 @@ Muffin-Babel
 Requirements
 =============
 
-- python >= 3.8
+- python >= 3.7
 
 .. _installation:
 
