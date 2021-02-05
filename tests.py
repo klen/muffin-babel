@@ -28,7 +28,7 @@ async def test_babel():
 
     @babel.locale_selector
     async def get_locale_from_request(request, default):
-        return request.query.get('lang', default)
+        return request.url.query.get('lang', default)
 
     @app.route('/')
     async def index(request):

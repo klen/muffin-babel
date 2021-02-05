@@ -56,7 +56,7 @@ class Plugin(BasePlugin):
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
-        self.__locale_selector: t.Optional[t.Callable[[muffin.Request, str], t.Coroutine[t.Any, t.Any, str]]] = select_locale_by_request  # noqa
+        self.__locale_selector: t.Optional[t.Callable[[muffin.Request, str], t.Awaitable[str]]] = select_locale_by_request  # noqa
 
         # Install a middleware for autodetection
         if self.cfg.auto_detect_locale:
