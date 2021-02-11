@@ -100,16 +100,31 @@ function inside the Jinja2 templates' context.
 Options
 -------
 
+========================== ============== ===============================================
+ Name                      Default Value  Description
+========================== ============== ===============================================
+ **AUTO_DETECT_LOCALE**    ``True``       Installs a middleware to automatically detect users locales
+ **CONFIGURE_JINJA2**      ``True``       Installs i18n support for jinja2 templates (through ``muffin-jinja``)
+ **DEFAULT_LOCALE**        ``"en"``       Default locale
+ **DOMAIN**                ``"messages"`` Default localization domain
+ **SOURCES_MAP**                          Babel sources map
+ **OPTIONS_MAP**                          Babel options map
 ========================== ==============================================================
- Name                       Description (``default value``)
-========================== ==============================================================
- *AUTO_DETECT_LOCALE*       Installs a middleware to automatically detect users locales (``True``)
- *CONFIGURE_JINJA2*         Installs i18n support for jinja2 templates (through ``muffin-jinja``) (``True``)
- *DEFAULT_LOCALE*           Default locale (``en``)
- *DOMAIN*                   Default localization domain (``messages``)
- *SOURCES_MAP*              Babel sources map
- *OPTIONS_MAP*              Babel options map
-========================== ==============================================================
+
+You are able to provide the options when you are initiliazing the plugin:
+
+.. code-block:: python
+
+    babel.setup(app, default_locale='fr')
+
+
+Or setup it inside ``Muffin.Application`` config using the ``BABEL_`` prefix:
+
+.. code-block:: python
+
+   BABEL_DEFAULT_LOCALE = 'fr'
+
+``Muffin.Application`` configuration options are case insensitive
 
 Commands
 ========
