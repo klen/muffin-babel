@@ -109,7 +109,7 @@ Options
  **DOMAIN**                ``"messages"`` Default localization domain
  **SOURCES_MAP**                          Babel sources map
  **OPTIONS_MAP**                          Babel options map
-========================== ==============================================================
+========================== ============== ===============================================
 
 You are able to provide the options when you are initiliazing the plugin:
 
