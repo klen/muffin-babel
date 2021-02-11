@@ -16,7 +16,7 @@ from babel.messages.pofile import write_po, read_po
 from muffin.plugin import BasePlugin
 
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 __project__ = "muffin-babel"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
