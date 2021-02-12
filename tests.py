@@ -24,7 +24,7 @@ async def test_babel():
     jinja2 = muffin_jinja2.Plugin(app)
     babel = Babel(app)
 
-    await app.lifespan.__startup__()
+    await app.lifespan.run('startup')
 
     @babel.locale_selector
     async def get_locale_from_request(request, default):
