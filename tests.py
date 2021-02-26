@@ -3,14 +3,6 @@ import muffin_jinja2
 import pytest
 
 
-@pytest.fixture(params=[
-    pytest.param('asyncio'),
-    pytest.param('trio'),
-], autouse=True)
-def anyio_backend(request):
-    return request.param
-
-
 async def test_babel():
     from muffin_babel import Plugin as Babel
 
