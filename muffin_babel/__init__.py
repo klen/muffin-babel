@@ -74,7 +74,7 @@ class Plugin(BasePlugin):
             :param version: set project version in output
             :param locations: add message locations
             """
-            Locale.parse(locale)
+            Locale.parse(locale, sep='-')
 
             dirs = [d for d in dirnames if os.path.isdir(d)]
 
@@ -175,7 +175,7 @@ class Plugin(BasePlugin):
     @current_locale.setter
     def current_locale(self, lang: str):
         """Set current locale."""
-        return current_locale.set(Locale.parse(lang))
+        return current_locale.set(Locale.parse(lang, sep='-'))
 
     def get_translations(self, domain: str = None, locale: Locale = None) -> support.Translations:
         """Load and cache translations."""

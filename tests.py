@@ -1,6 +1,5 @@
 import muffin
 import muffin_jinja2
-import pytest
 
 
 async def test_babel():
@@ -18,16 +17,21 @@ async def test_babel():
 
     await app.lifespan.run('startup')
 
-    @babel.locale_selector
-    async def get_locale_from_request(request, default):
-        return request.url.query.get('lang', default)
-
     @app.route('/')
     async def index(request):
         assert babel.current_locale
         return babel.gettext('Hello World!')
 
     client = muffin.TestClient(app)
+
+    res = await client.get('/', headers={
+        'accept-language': 'ru-RU, ru;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5'
+    })
+    assert await res.text() == 'Привет, Мир!'
+
+    @babel.locale_selector
+    async def get_locale_from_request(request, default):
+        return request.url.query.get('lang', default)
 
     res = await client.get('/')
     assert await res.text() == 'Hello World!'
