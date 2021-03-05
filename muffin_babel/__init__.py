@@ -56,16 +56,16 @@ class Plugin(BasePlugin):
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
-        self.__locale_selector: t.Optional[t.Callable[[muffin.Request, str], t.Awaitable[str]]] = select_locale_by_request  # noqa
+        self.__locale_selector: t.Optional[t.Callable[[muffin.Request], t.Awaitable[t.Optional[str]]]] = select_locale_by_request  # noqa
 
         # Install a middleware for autodetection
         if self.cfg.auto_detect_locale:
             app.middleware(self.__middleware__)
 
         @app.manage(lifespan=False)
-        def babel_extract_messages(*dirnames: str, project: str = app.name, locations: bool = True,
-                                   charset: str = 'utf-8', domain: str = self.cfg.domain,
-                                   locale: str = self.cfg.default_locale):
+        def babel_extract_messages(*dirnames: str, project: str = app.cfg.name,
+                                   domain: str = self.cfg.domain, locations: bool = True,
+                                   charset: str = 'utf-8', locale: str = self.cfg.default_locale):
             """Extract messages from source code.
 
             :param charset: charset to use in the output
@@ -136,7 +136,10 @@ class Plugin(BasePlugin):
     async def __middleware__(self, handler: t.Callable,
                              request: muffin.Request, receive: Receive, send: Send) -> t.Any:
         """Auto detect a locale by the given request."""
-        await self.select_locale(request)
+        if self.__locale_selector:
+            lang = await self.__locale_selector(request)
+            self.current_locale = lang or self.cfg.default_locale
+
         return await handler(request, receive, send)
 
     async def startup(self):
@@ -154,14 +157,6 @@ class Plugin(BasePlugin):
         """Update self locale selector."""
         self.__locale_selector = to_awaitable(fn)
         return fn
-
-    async def select_locale(self, request: muffin.Request):
-        """Select a locale by the request."""
-        if self.__locale_selector is None:
-            return
-
-        lang = await self.__locale_selector(request, self.cfg.default_locale)
-        self.current_locale = lang
 
     @property
     def current_locale(self) -> Locale:

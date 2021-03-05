@@ -6,11 +6,9 @@ async def test_babel():
     from muffin_babel import Plugin as Babel
 
     app = muffin.Application(
-        'babel',
-
-        DEBUG=True,
-        BABEL_CONFIGURE_JINJA2=True,
-        BABEL_LOCALE_FOLDERS=['example/locales'],
+        debug=True,
+        babel_configure_jinja2=True,
+        babel_locale_folders=['example/locales'],
     )
     jinja2 = muffin_jinja2.Plugin(app)
     babel = Babel(app)
@@ -30,8 +28,8 @@ async def test_babel():
     assert await res.text() == 'Привет, Мир!'
 
     @babel.locale_selector
-    async def get_locale_from_request(request, default):
-        return request.url.query.get('lang', default)
+    async def get_locale_from_request(request):
+        return request.url.query.get('lang')
 
     res = await client.get('/')
     assert await res.text() == 'Hello World!'

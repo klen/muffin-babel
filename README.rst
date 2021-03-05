@@ -73,7 +73,7 @@ Setup a locale selector function (by default the plugin is parsing ``accept-lang
 .. code-block:: python
 
     @babel.locale_selector
-    async def get_locale(request, default_locale='en'):
+    async def get_locale(request):
         """ Return locale either from request.query or from request headers. """
         locale = request.query.get('lang')
         if not locale:
