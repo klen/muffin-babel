@@ -4,16 +4,16 @@ import os
 import typing as t
 from numbers import Number
 
-import muffin
 from asgi_babel import current_locale, select_locale_by_request
-from asgi_tools._types import Receive, Send
 from asgi_tools.utils import to_awaitable
 from babel import Locale, support
 from babel.messages.extract import extract_from_dir
 from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import write_po, read_po
+from muffin import Application, Request
 from muffin.plugin import BasePlugin
+from muffin.typing import Receive, Send
 
 
 __version__ = "0.7.8"
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
-F = t.TypeVar('F', bound=t.Callable[[muffin.Request, str], t.Coroutine[t.Any, t.Any, str]])
+F = t.TypeVar('F', bound=t.Callable[[Request, str], t.Coroutine[t.Any, t.Any, str]])
 
 TRANSLATIONS: t.Dict[t.Tuple[str, str], support.Translations] = {}
 
@@ -52,11 +52,11 @@ class Plugin(BasePlugin):
         }
     }
 
-    def setup(self, app: muffin.Application, **options):  # noqa
+    def setup(self, app: Application, **options):  # noqa
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
-        self.__locale_selector: t.Optional[t.Callable[[muffin.Request], t.Awaitable[t.Optional[str]]]] = select_locale_by_request  # noqa
+        self.__locale_selector: t.Optional[t.Callable[[Request], t.Awaitable[t.Optional[str]]]] = select_locale_by_request  # noqa
 
         # Install a middleware for autodetection
         if self.cfg.auto_detect_locale:
@@ -134,7 +134,7 @@ class Plugin(BasePlugin):
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
     async def __middleware__(self, handler: t.Callable,
-                             request: muffin.Request, receive: Receive, send: Send) -> t.Any:
+                             request: Request, receive: Receive, send: Send) -> t.Any:
         """Auto detect a locale by the given request."""
         if self.__locale_selector:
             lang = await self.__locale_selector(request)
