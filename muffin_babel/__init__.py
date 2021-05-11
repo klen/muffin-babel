@@ -16,7 +16,7 @@ from muffin.plugins import BasePlugin
 from muffin.typing import Receive, Send
 
 
-__version__ = "0.7.10"
+__version__ = "0.7.11"
 __project__ = "muffin-babel"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
