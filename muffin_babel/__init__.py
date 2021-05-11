@@ -12,7 +12,7 @@ from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import write_po, read_po
 from muffin import Application, Request
-from muffin.plugin import BasePlugin
+from muffin.plugins import BasePlugin
 from muffin.typing import Receive, Send
 
 
