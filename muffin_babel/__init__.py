@@ -6,6 +6,7 @@ from numbers import Number
 
 from asgi_babel import current_locale, select_locale_by_request
 from asgi_tools.utils import to_awaitable
+from asgi_tools.typing import Receive, Send
 from babel import Locale, support
 from babel.messages.extract import extract_from_dir
 from babel.messages.frontend import Catalog
@@ -13,7 +14,6 @@ from babel.messages.mofile import write_mo
 from babel.messages.pofile import write_po, read_po
 from muffin import Application, Request
 from muffin.plugins import BasePlugin
-from muffin.typing import Receive, Send
 
 
 __version__ = "0.7.11"
