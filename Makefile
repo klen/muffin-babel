@@ -23,6 +23,10 @@ clean:
 VERSION?=minor
 # target: release - Bump version
 release:
+	@git checkout master
+	@git pull
+	@git checkout develop
+	@git pull
 	@$(VIRTUAL_ENV)/bin/bump2version $(VERSION)
 	@git checkout master
 	@git merge develop
@@ -69,4 +73,3 @@ mypy: $(VIRTUAL_ENV)
 # target: example - Run an example
 example: $(VIRTUAL_ENV)
 	@$(VIRTUAL_ENV)/bin/uvicorn --port 5000 --reload example:app
-
