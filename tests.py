@@ -50,3 +50,30 @@ async def test_babel():
 
     res = await client.get('/jinja?lang=ru')
     assert await res.text() == 'Привет, Мир!'
+
+
+async def test_babel_middleware():
+    from muffin_babel import Plugin as Babel
+
+    app = muffin.Application(babel_locale_folders=['example/locales'])
+    babel = Babel(app)
+
+    @app.middleware
+    async def process_locale(handler, scope, receive, send):
+        assert babel.current_locale.language == 'ru'
+        return await handler(scope, receive, send)
+
+    @app.route('/')
+    async def index(request):
+        assert babel.current_locale.language == 'ru'
+        return babel.gettext('Hello World!')
+
+    await app.lifespan.run('startup')
+
+    client = muffin.TestClient(app)
+
+    async with client.lifespan():
+        res = await client.get('/', headers={
+            'accept-language': 'ru-RU, ru;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5'
+        })
+        assert await res.text() == 'Привет, Мир!'
