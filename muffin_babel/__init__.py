@@ -58,6 +58,10 @@ class Plugin(BasePlugin):
 
         self.__locale_selector: t.Optional[t.Callable[[Request], t.Awaitable[t.Optional[str]]]] = select_locale_by_request  # noqa
 
+        # Install a middleware for autodetection
+        if self.cfg.auto_detect_locale:
+            app.middleware(self.__middleware__, insert_first=True)
+
         @app.manage(lifespan=False)
         def babel_extract_messages(*dirnames: str, project: str = app.cfg.name,
                                    domain: str = self.cfg.domain, locations: bool = True,
@@ -148,10 +152,6 @@ class Plugin(BasePlugin):
                 lambda s, p, n: self.get_translations().ungettext(s, p, n),
                 newstyle=True
             )
-
-        # Install a middleware for autodetection
-        if self.cfg.auto_detect_locale:
-            self.app.middleware(self.__middleware__)
 
     def locale_selector(self, fn: F) -> F:
         """Update self locale selector."""

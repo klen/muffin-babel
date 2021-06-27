@@ -60,6 +60,7 @@ async def test_babel_middleware():
 
     @app.middleware
     async def process_locale(handler, scope, receive, send):
+        # A correct locale has to be here
         assert babel.current_locale.language == 'ru'
         return await handler(scope, receive, send)
 
