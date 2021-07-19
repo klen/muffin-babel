@@ -74,8 +74,6 @@ class Plugin(BasePlugin):
             :param version: set project version in output
             :param locations: add message locations
             """
-            Locale.parse(locale, sep='-')
-
             dirs = [d for d in dirnames if os.path.isdir(d)]
 
             catalog = Catalog(locale=locale, project=project, charset=charset)
