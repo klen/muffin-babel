@@ -1,0 +1,2 @@
+muffin      >=      0.86
+asgi_babel  >=      0.7
