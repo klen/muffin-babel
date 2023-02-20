@@ -15,7 +15,7 @@ from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import read_po, write_po
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __project__ = "muffin-babel"
 __author__ = "Kirill Klenov <horneds@gmail.com>"
 __license__ = "MIT"
