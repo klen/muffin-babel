@@ -27,6 +27,7 @@ release:
 	@git pull
 	@git checkout develop
 	@git pull
+	@$(VIRTUAL_ENV)/bin/pip install bump2version
 	@$(VIRTUAL_ENV)/bin/bump2version $(VERSION)
 	@git checkout master
 	@git merge develop
