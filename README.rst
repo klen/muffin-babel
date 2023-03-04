@@ -136,11 +136,11 @@ Extract messages
 
 Extract strings from your application to locales: ::
 
-    $ muffin app_package babel_extract_messages [OPTIONS] appdir 
+    $ muffin app_package babel_extract_messages [OPTIONS] appdir
 
 
 Translate ``.po`` files and compile translations: ::
-    
+
     $ muffin app_package babel_compile_messages [OPTIONS]
 
 
