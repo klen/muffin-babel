@@ -1,29 +1,24 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
 import logging
-import os
-from numbers import Number
-from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
-from asgi_tools.types import TASGIReceive, TASGISend
-from muffin import Application, Request
-from muffin.plugins import BasePlugin
-
 from babel import Locale, support
 from babel.messages.extract import extract_from_dir
 from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import read_po, write_po
-
-__version__ = "1.2.1"
-__project__ = "muffin-babel"
-__author__ = "Kirill Klenov <horneds@gmail.com>"
-__license__ = "MIT"
-
+from muffin import Application, Request
+from muffin.plugins import BasePlugin
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
+if TYPE_CHECKING:
+    from numbers import Number
+
+    from asgi_tools.types import TASGIReceive, TASGISend
 
 TLocaleSelector = Callable[[Request], Awaitable[Optional[str]]]
 TVLocaleSelector = TypeVar("TVLocaleSelector", bound=TLocaleSelector)
@@ -48,12 +43,12 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options):  # noqa
+    def setup(self, app: Application, **options): # noqa: C901
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
         self.__locale_selector: Callable[
-            [Request], Awaitable[Optional[str]]
+            [Request], Awaitable[Optional[str]],
         ] = select_locale_by_request
 
         # Install a middleware for autodetection
@@ -67,7 +62,7 @@ class Plugin(BasePlugin):
             domain: str = self.cfg.domain,
             locations: bool = True,
             charset: str = "utf-8",
-            locale: str = self.cfg.default_locale
+            locale: str = self.cfg.default_locale,
         ):
             """Extract messages from source code.
 
@@ -77,76 +72,63 @@ class Plugin(BasePlugin):
             :param version: set project version in output
             :param locations: add message locations
             """
-            dirs = [d for d in dirnames if os.path.isdir(d)]
+            paths = [Path(d) for d in dirnames]
+            dirs = [path for path in paths if path.is_dir()]
 
             catalog = Catalog(locale=locale, project=project, charset=charset)
-            for dname in dirs:
+            for dpath in dirs:
                 for filename, lineno, message, comments, context in extract_from_dir(
-                    dname,
+                    dpath,
                     method_map=self.cfg.sources_map,
                     options_map=self.cfg.options_map,
                 ):
 
                     lines = []
                     if locations:
-                        filepath = os.path.normpath(os.path.join(dname, filename))
+                        filepath = dpath.absolute() / filename
                         lines = [(filepath, lineno)]
 
                     catalog.add(
-                        message, None, lines, auto_comments=comments, context=context
+                        message, None, lines, auto_comments=comments, context=context,
                     )
 
-            locales_dir = self.cfg.locale_folders[0]
-            output = os.path.join(locales_dir, locale, "LC_MESSAGES", "%s.po" % domain)
+            locales_dir = Path(self.cfg.locale_folders[0])
+            output = locales_dir / locale / "LC_MESSAGES" / f"{domain}.po"
 
-            if os.path.exists(output):
-                with open(output, "rb") as f:
+            if output.exists():
+                with output.open("rb") as f:
                     template = read_po(f, locale=locale, charset=charset)
                     template.update(catalog)
                     catalog = template
 
-            if not os.path.exists(os.path.dirname(output)):
-                os.makedirs(os.path.dirname(output))
+            if not output.parent.exists():
+                output.parent.mkdir(parents=True)
 
             logger.info("writing PO template file to %s", output)
-            outfile = open(output, "wb")
-
-            try:
-                write_po(
-                    outfile,
-                    catalog,
-                    include_previous=True,
-                    sort_output=not locations,
-                    sort_by_file=locations,
-                )
-            finally:
-                outfile.close()
+            with output.open("wb") as f:
+                write_po(f, catalog, sort_output=not locations, sort_by_file=locations)
 
         @app.manage(lifespan=False)
         def babel_compile_messages(
-            use_fuzzy=False, statistics=False, domain=self.cfg.domain
-        ):  # noqa
+            *, use_fuzzy=False, domain=self.cfg.domain,
+        ):
             """Compile messages for locales.
 
             :param domain:  set domain name for locales
             """
             for locales_dir in self.cfg.locale_folders:
-                for locale in os.listdir(locales_dir):
-                    po_file = os.path.join(
-                        locales_dir, locale, "LC_MESSAGES", domain + ".po"
-                    )
-
-                    if not os.path.exists(po_file):
+                source = Path(locales_dir)
+                for locale in source.iterdir():
+                    po_file = locale / "LC_MESSAGES" / f"{domain}.po"
+                    if not po_file.exists():
                         continue
 
-                    with open(po_file, "r") as po:
+                    with po_file.open("rb") as po:
                         catalog = read_po(po, locale)
 
-                    mo_file = os.path.join(
-                        locales_dir, locale, "LC_MESSAGES", domain + ".mo"
-                    )
+                    mo_file = po_file.with_suffix(".mo")
 
-                    with open(mo_file, "wb") as mo:
+                    with mo_file.open("wb") as mo:
                         logger.info("writing MO template file to %s", mo_file)
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
@@ -154,8 +136,8 @@ class Plugin(BasePlugin):
         self,
         handler: Callable,
         request: Request,
-        receive: TASGIReceive,
-        send: TASGISend,
+        receive: "TASGIReceive",
+        send: "TASGISend",
     ) -> Any:
         """Auto detect a locale by the given request."""
         lang = await self.__locale_selector(request)
@@ -194,7 +176,7 @@ class Plugin(BasePlugin):
         return current_locale.set(Locale.parse(lang, sep="-"))
 
     def get_translations(
-        self, domain: Optional[str] = None, locale: Optional[Locale] = None
+        self, domain: Optional[str] = None, locale: Optional[Locale] = None,
     ) -> support.Translations:
         """Load and cache translations."""
         locale = locale or self.current_locale
@@ -221,9 +203,9 @@ class Plugin(BasePlugin):
         self,
         singular: str,
         plural: str,
-        num: Number,
+        num: "Number",
         domain: Optional[str] = None,
-        **variables
+        **variables,
     ) -> str:
         """Translate a string wity the current locale.
 
@@ -236,7 +218,7 @@ class Plugin(BasePlugin):
         return t.ungettext(singular, plural, num) % variables
 
     def pgettext(
-        self, context: str, string: str, domain: Optional[str] = None, **variables
+        self, context: str, string: str, domain: Optional[str] = None, **variables,
     ) -> str:
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
@@ -247,9 +229,9 @@ class Plugin(BasePlugin):
         context: str,
         singular: str,
         plural: str,
-        num: Number,
+        num: "Number",
         domain: Optional[str] = None,
-        **variables
+        **variables,
     ) -> str:
         """Like :meth:`ngettext` but with a context."""
         variables.setdefault("num", num)
@@ -257,4 +239,4 @@ class Plugin(BasePlugin):
         return t.unpgettext(context, singular, plural, num) % variables
 
 
-#  pylama:ignore=W0212
+# ruff: noqa: PLR0913
