@@ -1,21 +1,13 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
 import logging
+from contextlib import contextmanager
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Optional,
-    Tuple,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
 from babel import Locale, support
+from babel.messages.catalog import Catalog
 from babel.messages.extract import extract_from_dir
-from babel.messages.frontend import Catalog
 from babel.messages.mofile import write_mo
 from babel.messages.pofile import read_po, write_po
 from muffin import Application, Request
@@ -25,8 +17,6 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 if TYPE_CHECKING:
-    from numbers import Number
-
     from asgi_tools.types import TASGIReceive, TASGISend
 
 TLocaleSelector = Callable[[Request], Awaitable[Optional[str]]]
@@ -92,7 +82,6 @@ class Plugin(BasePlugin):
                     method_map=self.cfg.sources_map,
                     options_map=self.cfg.options_map,
                 ):
-
                     lines = []
                     if locations:
                         filepath = dpath.absolute() / filename
@@ -123,11 +112,7 @@ class Plugin(BasePlugin):
                 write_po(f, catalog, sort_output=not locations, sort_by_file=locations)
 
         @app.manage(lifespan=False)
-        def babel_compile_messages(
-            *,
-            use_fuzzy=False,
-            domain=self.cfg.domain,
-        ):
+        def babel_compile_messages(*, use_fuzzy=False, domain=self.cfg.domain):
             """Compile messages for locales.
 
             :param domain:  set domain name for locales
@@ -149,16 +134,11 @@ class Plugin(BasePlugin):
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
     async def __middleware__(
-        self,
-        handler: Callable,
-        request: Request,
-        receive: "TASGIReceive",
-        send: "TASGISend",
+        self, handler: Callable, request: Request, receive: "TASGIReceive", send: "TASGISend"
     ) -> Any:
         """Auto detect a locale by the given request."""
         lang = await self.__locale_selector(request)
-        self.current_locale = lang or self.cfg.default_locale
-
+        self.current_locale = lang or self.cfg.default_locale  # type: ignore[assignment]
         return await handler(request, receive, send)
 
     async def startup(self):
@@ -182,7 +162,8 @@ class Plugin(BasePlugin):
         """Get current locale."""
         locale = current_locale.get()
         if locale is None:
-            self.current_locale = locale = self.cfg.default_locale
+            locale = Locale.parse(self.cfg.default_locale, sep="-")
+            current_locale.set(locale)
         return locale
 
     @current_locale.setter
@@ -190,10 +171,16 @@ class Plugin(BasePlugin):
         """Set current locale."""
         return current_locale.set(Locale.parse(lang, sep="-"))
 
+    @contextmanager
+    def locale_ctx(self, lang: str):
+        """Update current locale as context manager."""
+        old_locale = current_locale.get()
+        self.current_locale = lang  # type: ignore[assignment]
+        yield self
+        current_locale.set(old_locale)
+
     def get_translations(
-        self,
-        domain: Optional[str] = None,
-        locale: Optional[Locale] = None,
+        self, domain: Optional[str] = None, locale: Optional[Locale] = None
     ) -> support.Translations:
         """Load and cache translations."""
         locale = locale or self.current_locale
@@ -201,13 +188,13 @@ class Plugin(BasePlugin):
         if (domain, locale.language) not in TRANSLATIONS:
             translations = None
             for path in reversed(self.cfg.locale_folders):
-                trans = support.Translations.load(path, locales=locale, domain=domain)
+                trans = support.Translations.load(path, locales=locale.language, domain=domain)
                 if translations:
                     translations._catalog.update(trans._catalog)
                 else:
                     translations = trans
 
-            TRANSLATIONS[(domain, locale.language)] = translations
+            TRANSLATIONS[(domain, locale.language)] = translations  # type: ignore[assignment]
 
         return TRANSLATIONS[(domain, locale.language)]
 
@@ -217,12 +204,7 @@ class Plugin(BasePlugin):
         return t.ugettext(string) % variables
 
     def ngettext(
-        self,
-        singular: str,
-        plural: str,
-        num: "Number",
-        domain: Optional[str] = None,
-        **variables,
+        self, singular: str, plural: str, num: int, domain: Optional[str] = None, **variables
     ) -> str:
         """Translate a string wity the current locale.
 
@@ -234,13 +216,7 @@ class Plugin(BasePlugin):
         t = self.get_translations(domain)
         return t.ungettext(singular, plural, num) % variables
 
-    def pgettext(
-        self,
-        context: str,
-        string: str,
-        domain: Optional[str] = None,
-        **variables,
-    ) -> str:
+    def pgettext(self, context: str, string: str, domain: Optional[str] = None, **variables) -> str:
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
         return t.upgettext(context, string) % variables
@@ -250,7 +226,7 @@ class Plugin(BasePlugin):
         context: str,
         singular: str,
         plural: str,
-        num: "Number",
+        num: int,
         domain: Optional[str] = None,
         **variables,
     ) -> str:
