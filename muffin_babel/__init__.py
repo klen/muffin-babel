@@ -125,7 +125,7 @@ class Plugin(BasePlugin):
                         continue
 
                     with po_file.open("rb") as po:
-                        catalog = read_po(po, locale.as_posix())
+                        catalog = read_po(po, locale.name)
 
                     mo_file = po_file.with_suffix(".mo")
 
