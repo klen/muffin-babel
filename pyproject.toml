@@ -1,6 +1,6 @@
 [project]
 name = "muffin-babel"
-version = "1.3.1"
+version = "1.3.2"
 description = "Localization support for the Muffin Framework"
 readme = "README.rst"
 requires-python = ">=3.8"

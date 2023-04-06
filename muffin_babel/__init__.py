@@ -1,7 +1,16 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+    TypeVar,
+)
 
 from asgi_babel import current_locale, select_locale_by_request
 from babel import Locale, support
@@ -43,12 +52,13 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options): # noqa: C901
+    def setup(self, app: Application, **options):  # noqa: C901
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
 
         self.__locale_selector: Callable[
-            [Request], Awaitable[Optional[str]],
+            [Request],
+            Awaitable[Optional[str]],
         ] = select_locale_by_request
 
         # Install a middleware for autodetection
@@ -86,10 +96,14 @@ class Plugin(BasePlugin):
                     lines = []
                     if locations:
                         filepath = dpath.absolute() / filename
-                        lines = [(filepath, lineno)]
+                        lines = [(filepath.as_posix(), lineno)]
 
                     catalog.add(
-                        message, None, lines, auto_comments=comments, context=context,
+                        message,
+                        None,
+                        lines,
+                        auto_comments=comments,
+                        context=context,
                     )
 
             locales_dir = Path(self.cfg.locale_folders[0])
@@ -110,7 +124,9 @@ class Plugin(BasePlugin):
 
         @app.manage(lifespan=False)
         def babel_compile_messages(
-            *, use_fuzzy=False, domain=self.cfg.domain,
+            *,
+            use_fuzzy=False,
+            domain=self.cfg.domain,
         ):
             """Compile messages for locales.
 
@@ -124,7 +140,7 @@ class Plugin(BasePlugin):
                         continue
 
                     with po_file.open("rb") as po:
-                        catalog = read_po(po, locale)
+                        catalog = read_po(po, locale.as_posix())
 
                     mo_file = po_file.with_suffix(".mo")
 
@@ -166,8 +182,7 @@ class Plugin(BasePlugin):
         """Get current locale."""
         locale = current_locale.get()
         if locale is None:
-            self.current_locale = self.cfg.default_locale
-            locale = current_locale.get()
+            self.current_locale = locale = self.cfg.default_locale
         return locale
 
     @current_locale.setter
@@ -176,7 +191,9 @@ class Plugin(BasePlugin):
         return current_locale.set(Locale.parse(lang, sep="-"))
 
     def get_translations(
-        self, domain: Optional[str] = None, locale: Optional[Locale] = None,
+        self,
+        domain: Optional[str] = None,
+        locale: Optional[Locale] = None,
     ) -> support.Translations:
         """Load and cache translations."""
         locale = locale or self.current_locale
@@ -218,7 +235,11 @@ class Plugin(BasePlugin):
         return t.ungettext(singular, plural, num) % variables
 
     def pgettext(
-        self, context: str, string: str, domain: Optional[str] = None, **variables,
+        self,
+        context: str,
+        string: str,
+        domain: Optional[str] = None,
+        **variables,
     ) -> str:
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
