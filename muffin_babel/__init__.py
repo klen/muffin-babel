@@ -1,5 +1,7 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
+import csv
 import logging
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
@@ -133,6 +135,31 @@ class Plugin(BasePlugin):
                         logger.info("writing MO template file to %s", mo_file)
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
+        @app.manage(lifespan=False)
+        def babel_export_csv(
+            *, domain: str = self.cfg.domain, locale: str = self.cfg.default_locale
+        ):
+            """Export messages from a PO files as CSV."""
+            writer = csv.writer(sys.stdout)
+            writer.writerow(["id", "string", "context", "comment"])
+            for locales_dir in self.cfg.locale_folders:
+                po_file = Path(locales_dir) / locale / "LC_MESSAGES" / f"{domain}.po"
+                if not po_file.exists():
+                    continue
+
+                with po_file.open("rb") as po:
+                    catalog = read_po(po, locale)
+
+                for message in catalog:
+                    writer.writerow(
+                        [
+                            message.id,
+                            message.string,
+                            message.context,
+                            "\n".join(message.auto_comments),
+                        ]
+                    )
+
     async def __middleware__(
         self, handler: Callable, request: Request, receive: "TASGIReceive", send: "TASGISend"
     ) -> Any:
@@ -145,8 +172,9 @@ class Plugin(BasePlugin):
         """Tune Jinja2 if the plugin is installed."""
         if self.cfg.configure_jinja2 and "jinja2" in self.app.plugins:
             jinja2 = self.app.plugins["jinja2"]
-            jinja2.env.add_extension("jinja2.ext.i18n")
-            jinja2.env.install_gettext_callables(
+            env = jinja2.env  # type: ignore[]
+            env.add_extension("jinja2.ext.i18n")
+            env.install_gettext_callables(
                 lambda x: self.get_translations().ugettext(x),
                 lambda s, p, n: self.get_translations().ungettext(s, p, n),
                 newstyle=True,
