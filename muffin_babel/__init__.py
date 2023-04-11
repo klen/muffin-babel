@@ -44,9 +44,10 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options):  # noqa: C901
+    def setup(self, app: Application, **options):  # noqa: C901,PLR0915
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
+        self.domain = self.cfg.domain
 
         self.__locale_selector: Callable[
             [Request],
@@ -61,7 +62,7 @@ class Plugin(BasePlugin):
         def babel_extract_messages(
             *dirnames: str,
             project: str = app.cfg.name,
-            domain: str = self.cfg.domain,
+            domain: str = self.domain,
             locations: bool = True,
             charset: str = "utf-8",
             locale: str = self.cfg.default_locale,
@@ -114,7 +115,7 @@ class Plugin(BasePlugin):
                 write_po(f, catalog, sort_output=not locations, sort_by_file=locations)
 
         @app.manage(lifespan=False)
-        def babel_compile_messages(*, use_fuzzy=False, domain=self.cfg.domain):
+        def babel_compile_messages(*, use_fuzzy=False, domain=self.domain):
             """Compile messages for locales.
 
             :param domain:  set domain name for locales
@@ -136,9 +137,7 @@ class Plugin(BasePlugin):
                         write_mo(mo, catalog, use_fuzzy=use_fuzzy)
 
         @app.manage(lifespan=False)
-        def babel_export_csv(
-            *, domain: str = self.cfg.domain, locale: str = self.cfg.default_locale
-        ):
+        def babel_export_csv(*, domain: str = self.domain, locale: str = self.cfg.default_locale):
             """Export messages from a PO files as CSV."""
             writer = csv.writer(sys.stdout)
             writer.writerow(["id", "string", "context", "comment"])
@@ -212,7 +211,7 @@ class Plugin(BasePlugin):
     ) -> support.Translations:
         """Load and cache translations."""
         locale = locale or self.current_locale
-        domain = domain or self.cfg.domain
+        domain = domain or self.domain
         if (domain, locale.language) not in TRANSLATIONS:
             translations = None
             for path in reversed(self.cfg.locale_folders):
@@ -229,7 +228,7 @@ class Plugin(BasePlugin):
     def gettext(self, string: str, domain: Optional[str] = None, **variables) -> str:
         """Translate a string with the current locale."""
         t = self.get_translations(domain)
-        return t.ugettext(string) % variables
+        return render(t.ugettext(string), variables)
 
     def ngettext(
         self, singular: str, plural: str, num: int, domain: Optional[str] = None, **variables
@@ -247,7 +246,7 @@ class Plugin(BasePlugin):
     def pgettext(self, context: str, string: str, domain: Optional[str] = None, **variables) -> str:
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
-        return t.upgettext(context, string) % variables
+        return render(t.upgettext(context, string), variables)
 
     def npgettext(
         self,
@@ -262,6 +261,13 @@ class Plugin(BasePlugin):
         variables.setdefault("num", num)
         t = self.get_translations(domain)
         return t.unpgettext(context, singular, plural, num) % variables
+
+
+def render(value: str, variables) -> str:
+    """Render a string with variables."""
+    if variables:
+        return value % variables
+    return value
 
 
 # ruff: noqa: PLR0913

@@ -92,3 +92,8 @@ def test_locale_ctx(babel):
 
     with babel.locale_ctx("ru"):
         assert babel.gettext("Hello World!") == "Привет, Мир!"
+
+
+def test_gettext(babel):
+    assert babel.gettext("Hello %(user)s", user="John") == "Hello John"
+    assert babel.gettext("Hello %(user)s") == "Hello %(user)s"
