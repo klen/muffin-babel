@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
-from babel import Locale, support
+from babel import Locale, UnknownLocaleError, support
 from babel.messages.catalog import Catalog
 from babel.messages.extract import extract_from_dir
 from babel.messages.mofile import write_mo
@@ -196,7 +196,11 @@ class Plugin(BasePlugin):
     @current_locale.setter
     def current_locale(self, lang: str):
         """Set current locale."""
-        return current_locale.set(Locale.parse(lang, sep="-"))
+        try:
+            locale = Locale.parse(lang, sep="-")
+            return current_locale.set(locale)
+        except (UnknownLocaleError, ValueError):
+            return
 
     @contextmanager
     def locale_ctx(self, lang: str):

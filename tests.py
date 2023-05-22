@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 import muffin
 import muffin_jinja2
 import pytest
+
+if TYPE_CHECKING:
+    from muffin_babel import Plugin as Babel
 
 
 @pytest.fixture()
@@ -64,7 +69,7 @@ async def test_babel(app, jinja2, babel):
     assert await res.text() == "Привет, Мир!"
 
 
-async def test_babel_middleware(app, babel):
+async def test_babel_middleware(app, babel: "Babel"):
     @app.middleware
     async def process_locale(handler, scope, receive, send):
         # A correct locale has to be here
@@ -87,13 +92,16 @@ async def test_babel_middleware(app, babel):
         assert await res.text() == "Привет, Мир!"
 
 
-def test_locale_ctx(babel):
+def test_locale_ctx(babel: "Babel"):
     assert babel.gettext("Hello World!") == "Hello World!"
 
     with babel.locale_ctx("ru"):
         assert babel.gettext("Hello World!") == "Привет, Мир!"
 
+    with babel.locale_ctx("en-RU"):
+        assert babel.gettext("Hello World!") == "Hello World!"
 
-def test_gettext(babel):
+
+def test_gettext(babel: "Babel"):
     assert babel.gettext("Hello %(user)s", user="John") == "Hello John"
     assert babel.gettext("Hello %(user)s") == "Hello %(user)s"
