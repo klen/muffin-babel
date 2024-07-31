@@ -4,7 +4,7 @@ import logging
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
 from babel import Locale, UnknownLocaleError, support
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 TLocaleSelector = Callable[[Request], Awaitable[Optional[str]]]
 TVLocaleSelector = TypeVar("TVLocaleSelector", bound=TLocaleSelector)
 
-TRANSLATIONS: Dict[Tuple[str, str], support.Translations] = {}
+TRANSLATIONS: dict[tuple[str, str], support.Translations] = {}
 
 
 class Plugin(BasePlugin):
