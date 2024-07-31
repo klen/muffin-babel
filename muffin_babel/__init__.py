@@ -1,10 +1,11 @@
 """Muffin-Babel -- I18n engine for Muffin framework."""
+
 import csv
 import logging
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, ClassVar, Optional, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
 from babel import Locale, UnknownLocaleError, support
@@ -31,7 +32,7 @@ class Plugin(BasePlugin):
     """The class is used to control the babel integration to Muffin application."""
 
     name = "babel"
-    defaults = {
+    defaults: ClassVar = {
         "auto_detect_locale": True,
         "configure_jinja2": True,  # install i18n support in muffin-jinja2
         "default_locale": "en",  # default locale
@@ -44,15 +45,14 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options):  # noqa: C901,PLR0915
+    def setup(self, app: Application, **options):  # noqa: C901
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
         self.domain = self.cfg.domain
 
-        self.__locale_selector: Callable[
-            [Request],
-            Awaitable[Optional[str]],
-        ] = select_locale_by_request
+        self.__locale_selector: Callable[[Request], Awaitable[Optional[str]]] = (
+            select_locale_by_request
+        )
 
         # Install a middleware for autodetection
         if self.cfg.auto_detect_locale:
@@ -274,4 +274,4 @@ def render(value: str, variables) -> str:
     return value
 
 
-# ruff: noqa: PLR0913
+# ruff: noqa: PLR0913, FA100
