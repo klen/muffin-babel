@@ -2,7 +2,7 @@
 name = "muffin-babel"
 version = "1.5.0"
 description = "Localization support for the Muffin Framework"
-readme = "README.rst"
+readme = "README.md"
 license = "MIT"
 authors = ["Kirill Klenov <horneds@gmail.com>"]
 keywords = ["localization", "internationalization", "muffin", "babel", "asyncio", "trio", "asgi"]
@@ -12,10 +12,10 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Internet :: WWW/HTTP",
   "Framework :: AsyncIO",
   "Framework :: Trio",
@@ -25,9 +25,9 @@ repository = "https://github.com/klen/muffin-babel"
 packages = [{ include = "muffin_babel" }]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-asgi-babel = "^0"
-muffin = "^0"
+python = "^3.10"
+asgi-babel = "*"
+muffin = "*"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
@@ -52,14 +52,14 @@ ignore_missing_imports = true
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py39,py310,py311,py312,pypy39
+envlist = py310,py311,py312,py313,pypy310
 
 [testenv]
 deps = -e .[tests]
 commands =
 	pytest --mypy tests.py
 
-[testenv:pypy39]
+[testenv:pypy310]
 deps = -e .[tests]
 commands =
 	pytest tests.py
@@ -67,7 +67,7 @@ commands =
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 exclude = [".venv", "docs", "examples"]
 
 [tool.ruff.lint]
@@ -94,7 +94,7 @@ ignore = [
 
 [tool.black]
 line-length = 100
-target-version = ["py310", "py311"]
+target-version = ["py310", "py311", "py312", "py313"]
 preview = true
 
 [build-system]

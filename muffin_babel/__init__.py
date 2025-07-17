@@ -5,7 +5,7 @@ import logging
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, ClassVar, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, ClassVar, TypeVar
 
 from asgi_babel import current_locale, select_locale_by_request
 from babel import Locale, UnknownLocaleError, support
@@ -22,7 +22,7 @@ logger.addHandler(logging.NullHandler())
 if TYPE_CHECKING:
     from asgi_tools.types import TASGIReceive, TASGISend
 
-TLocaleSelector = Callable[[Request], Awaitable[Optional[str]]]
+TLocaleSelector = Callable[[Request], Awaitable[str | None]]
 TVLocaleSelector = TypeVar("TVLocaleSelector", bound=TLocaleSelector)
 
 TRANSLATIONS: dict[tuple[str, str], support.Translations] = {}
@@ -50,7 +50,7 @@ class Plugin(BasePlugin):
         super(Plugin, self).setup(app, **options)
         self.domain = self.cfg.domain
 
-        self.__locale_selector: Callable[[Request], Awaitable[Optional[str]]] = (
+        self.__locale_selector: Callable[[Request], Awaitable[str | None]] = (
             select_locale_by_request
         )
 
@@ -211,17 +211,18 @@ class Plugin(BasePlugin):
         current_locale.set(old_locale)
 
     def get_translations(
-        self, domain: Optional[str] = None, locale: Optional[Locale] = None
+        self, domain: str | None = None, locale: Locale | None = None
     ) -> support.Translations:
         """Load and cache translations."""
         locale = locale or self.current_locale
         domain = domain or self.domain
+        assert domain
         if (domain, locale.language) not in TRANSLATIONS:
             translations = None
             for path in reversed(self.cfg.locale_folders):
                 trans = support.Translations.load(path, locales=locale.language, domain=domain)
                 if translations:
-                    translations._catalog.update(trans._catalog)
+                    translations.add(trans)  # type: ignore[attr-defined]
                 else:
                     translations = trans
 
@@ -229,13 +230,13 @@ class Plugin(BasePlugin):
 
         return TRANSLATIONS[(domain, locale.language)]
 
-    def gettext(self, string: str, domain: Optional[str] = None, **variables) -> str:
+    def gettext(self, string: str, domain: str | None = None, **variables) -> str:
         """Translate a string with the current locale."""
         t = self.get_translations(domain)
         return render(t.ugettext(string), variables)
 
     def ngettext(
-        self, singular: str, plural: str, num: int, domain: Optional[str] = None, **variables
+        self, singular: str, plural: str, num: int, domain: str | None = None, **variables
     ) -> str:
         """Translate a string wity the current locale.
 
@@ -247,7 +248,7 @@ class Plugin(BasePlugin):
         t = self.get_translations(domain)
         return t.ungettext(singular, plural, num) % variables
 
-    def pgettext(self, context: str, string: str, domain: Optional[str] = None, **variables) -> str:
+    def pgettext(self, context: str, string: str, domain: str | None = None, **variables) -> str:
         """Like :meth:`gettext` but with a context."""
         t = self.get_translations(domain)
         return render(t.upgettext(context, string), variables)
@@ -258,7 +259,7 @@ class Plugin(BasePlugin):
         singular: str,
         plural: str,
         num: int,
-        domain: Optional[str] = None,
+        domain: str | None = None,
         **variables,
     ) -> str:
         """Like :meth:`ngettext` but with a context."""
@@ -269,9 +270,8 @@ class Plugin(BasePlugin):
 
 def render(value: str, variables) -> str:
     """Render a string with variables."""
-    if variables:
-        return value % variables
-    return value
-
-
-# ruff: noqa: PLR0913, FA100
+    try:
+        return value % variables if variables else value
+    except KeyError as e:
+        logger.warning("Missing variable for translation: %s", e)
+        return value
