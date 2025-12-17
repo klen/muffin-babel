@@ -1,6 +1,6 @@
 [project]
 name = "muffin-babel"
-version = "1.6.0"
+version = "1.7.0"
 description = "Localization support for the Muffin Framework"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
 requires-python = ">=3.10,<4"
@@ -111,7 +111,7 @@ preview = true
 [tool.bumpversion]
 tag = false
 commit = false
-current_version = "1.6.0"
+current_version = "1.7.0"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
