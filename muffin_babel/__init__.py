@@ -45,7 +45,7 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options):  # noqa: C901
+    def setup(self, app: Application, **options):  # noqa: C901,PLR0915
         """Setup the plugin's commands."""
         super(Plugin, self).setup(app, **options)
         self.domain = self.cfg.domain
@@ -100,6 +100,10 @@ class Plugin(BasePlugin):
 
             locales_dir = Path(self.cfg.locale_folders[0])
             output = locales_dir / locale / "LC_MESSAGES" / f"{domain}.po"
+
+            if not catalog:
+                logger.warning("No messages extracted; skip updating %s", output)
+                return
 
             if output.exists():
                 with output.open("rb") as f:

@@ -44,21 +44,18 @@ repos:
       - id: black
         stages: ["pre-commit"]
 
-  - repo: https://github.com/python-poetry/poetry
-    rev: "2.1.3"
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.9
     hooks:
-      - id: poetry-check
-        files: ^(.*/)?pyproject\.toml$
-        stages: ["pre-commit"]
-      - id: poetry-lock
-        files: ^(.*/)?(poetry\.lock|pyproject\.toml)$
+      - id: uv-lock
+        args: ["--check"]
         stages: ["pre-commit"]
 
   - repo: local
     hooks:
       - id: ruff
         name: ruff
-        entry: poetry run ruff check muffin_babel
+        entry: uv run ruff check muffin_babel
         language: system
         pass_filenames: false
         files: \.py$
@@ -66,7 +63,7 @@ repos:
 
       - id: mypy
         name: mypy
-        entry: poetry run mypy
+        entry: uv run mypy
         language: system
         pass_filenames: false
         files: \.py$
@@ -74,7 +71,7 @@ repos:
 
       - id: pytest
         name: pytest
-        entry: poetry run pytest
+        entry: uv run pytest tests.py
         language: system
         pass_filenames: false
         files: \.py$

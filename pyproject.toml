@@ -1,10 +1,11 @@
-[tool.poetry]
+[project]
 name = "muffin-babel"
 version = "1.6.0"
 description = "Localization support for the Muffin Framework"
+authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
+requires-python = ">=3.10,<4"
 readme = "README.md"
 license = "MIT"
-authors = ["Kirill Klenov <horneds@gmail.com>"]
 keywords = ["localization", "internationalization", "muffin", "babel", "asyncio", "trio", "asgi"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
@@ -16,28 +17,38 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Internet :: WWW/HTTP",
   "Framework :: AsyncIO",
   "Framework :: Trio",
 ]
-homepage = "https://github.com/klen/muffin-babel"
-repository = "https://github.com/klen/muffin-babel"
-packages = [{ include = "muffin_babel" }]
+dependencies = ["asgi-babel", "muffin"]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-asgi-babel = "*"
-muffin = "*"
+[project.urls]
+Homepage = "https://github.com/klen/muffin-babel"
+Repository = "https://github.com/klen/muffin-babel"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-black = "*"
-pre-commit = "*"
-pytest = "*"
-pytest-mypy = "*"
-pytest-aio = { version = "*", extras = ["curio", "trio"] }
-uvicorn = "*"
-muffin-jinja2 = "*"
+[dependency-groups]
+dev = [
+  "ruff",
+  "black",
+  "pre-commit",
+  "pytest",
+  "pytest-mypy",
+  "pytest-aio[curio, trio]",
+  "uvicorn",
+  "muffin-jinja2",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["muffin_babel"]
+
+[tool.hatch.build.targets.wheel]
+include = ["muffin_babel"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 addopts = "-xsv tests.py"
@@ -52,7 +63,7 @@ ignore_missing_imports = true
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py310,py311,py312,py313,pypy310
+envlist = py310,py311,py312,py313,py314,pypy310
 
 [testenv]
 deps = -e .[tests]
@@ -94,9 +105,15 @@ ignore = [
 
 [tool.black]
 line-length = 100
-target-version = ["py310", "py311", "py312", "py313"]
+target-version = ["py310"]
 preview = true
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.bumpversion]
+tag = false
+commit = false
+current_version = "1.6.0"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+replace = 'version = "{new_version}"'
+search = 'version = "{current_version}"'

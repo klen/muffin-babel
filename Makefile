@@ -4,11 +4,9 @@ VIRTUAL_ENV ?= .venv
 #  Development
 # =============
 
-$(VIRTUAL_ENV): poetry.lock .pre-commit-config.yaml
-	@[ -d $(VIRTUAL_ENV) ] || python -m venv $(VIRTUAL_ENV)
-	@poetry install --with dev
-	@poetry run pre-commit install
-	@poetry self add poetry-bumpversion
+$(VIRTUAL_ENV): uv.lock .pre-commit-config.yaml
+	@uv sync
+	@uv run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
 .PHONY: run
@@ -35,29 +33,34 @@ example: $(VIRTUAL_ENV)
 #  Bump version
 # ==============
 
-.PHONY: release
 VERSION?=minor
+
 # target: release - Bump version
+.PHONY: release
 release:
-	git checkout develop
-	git pull
-	git checkout master
-	git merge develop
-	git pull
-	@poetry version $(VERSION)
-	git commit -am "build(release): `poetry version -s`"
-	git tag `poetry version -s`
-	git checkout develop
-	git merge master
-	git push --tags origin develop master
+	@git checkout develop
+	@git pull
+	@git checkout master
+	@git merge develop
+	@git pull
+	@uvx bump-my-version bump $(VERSION)
+	@uv lock
+	@git commit -am "build(release): `uv version --short`"
+	@git tag `uv version --short`
+	@git checkout develop
+	@git merge master
+	@git push --tags origin develop master
 
 .PHONY: minor
 minor: release
 
 .PHONY: patch
 patch:
-	make release VERSION=patch
+	@make release VERSION=patch
 
 .PHONY: major
 major:
-	make release VERSION=major
+	@make release VERSION=major
+
+v:
+	@echo `uv version --short`
