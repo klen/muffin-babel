@@ -25,7 +25,10 @@ if TYPE_CHECKING:
 TLocaleSelector = Callable[[Request], Awaitable[str | None]]
 TVLocaleSelector = TypeVar("TVLocaleSelector", bound=TLocaleSelector)
 
-TRANSLATIONS: dict[tuple[str, str], support.Translations] = {}
+
+def parse_locale(lang: str | Locale) -> Locale:
+    """Parse a locale name written either as `en_US` or `en-US`."""
+    return Locale.parse(str(lang).replace("_", "-"), sep="-")
 
 
 class Plugin(BasePlugin):
@@ -49,6 +52,7 @@ class Plugin(BasePlugin):
         """Setup the plugin's commands."""
         res = super(Plugin, self).setup(app, name=name, **options)
         self.domain = self.cfg.domain
+        self.__translations: dict[tuple[str, str], support.Translations] = {}
 
         self.__locale_selector: Callable[[Request], Awaitable[str | None]] = (
             select_locale_by_request
@@ -75,6 +79,10 @@ class Plugin(BasePlugin):
             :param version: set project version in output
             :param locations: add message locations
             """
+            if not self.cfg.locale_folders:
+                logger.warning("No locale folders configured; skip extracting messages")
+                return
+
             paths = [Path(d) for d in dirnames]
             dirs = [path for path in paths if path.is_dir()]
 
@@ -126,6 +134,9 @@ class Plugin(BasePlugin):
             """
             for locales_dir in self.cfg.locale_folders:
                 source = Path(locales_dir)
+                if not source.is_dir():
+                    continue
+
                 for locale in source.iterdir():
                     po_file = locale / "LC_MESSAGES" / f"{domain}.po"
                     if not po_file.exists():
@@ -145,23 +156,28 @@ class Plugin(BasePlugin):
             """Export messages from a PO files as CSV."""
             writer = csv.writer(sys.stdout)
             writer.writerow(["id", "string", "context", "comment"])
-            for locales_dir in self.cfg.locale_folders:
-                po_file = Path(locales_dir) / locale / "LC_MESSAGES" / f"{domain}.po"
-                if not po_file.exists():
+            for folder in self.cfg.locale_folders:
+                po_file = Path(folder) / locale / "LC_MESSAGES" / f"{domain}.po"
+                if po_file.exists():
+                    break
+            else:
+                return
+
+            with po_file.open("rb") as po:
+                catalog = read_po(po, locale)
+
+            for message in catalog:
+                if not message.id:  # skip the catalog header
                     continue
 
-                with po_file.open("rb") as po:
-                    catalog = read_po(po, locale)
-
-                for message in catalog:
-                    writer.writerow(
-                        [
-                            message.id,
-                            message.string,
-                            message.context,
-                            "\n".join(message.auto_comments),
-                        ]
-                    )
+                writer.writerow(
+                    [
+                        message.id,
+                        message.string,
+                        message.context,
+                        "\n".join(message.auto_comments),
+                    ]
+                )
 
         return res
 
@@ -195,7 +211,11 @@ class Plugin(BasePlugin):
         """Get current locale."""
         locale = current_locale.get()
         if locale is None:
-            locale = Locale.parse(self.cfg.default_locale, sep="-")
+            try:
+                locale = parse_locale(self.cfg.default_locale)
+            except (UnknownLocaleError, ValueError):
+                logger.warning("Invalid default locale: %s", self.cfg.default_locale)
+                locale = Locale("en")
             current_locale.set(locale)
         return locale
 
@@ -203,18 +223,20 @@ class Plugin(BasePlugin):
     def current_locale(self, lang: str):
         """Set current locale."""
         try:
-            locale = Locale.parse(lang, sep="-")
-            return current_locale.set(locale)
+            locale = parse_locale(lang)
         except (UnknownLocaleError, ValueError):
             return
+        return current_locale.set(locale)
 
     @contextmanager
     def locale_ctx(self, lang: str):
         """Update current locale as context manager."""
         old_locale = current_locale.get()
         self.current_locale = lang  # type: ignore[assignment]
-        yield self
-        current_locale.set(old_locale)
+        try:
+            yield self
+        finally:
+            current_locale.set(old_locale)
 
     def get_translations(
         self, domain: str | None = None, locale: Locale | None = None
@@ -223,18 +245,25 @@ class Plugin(BasePlugin):
         locale = locale or self.current_locale
         domain = domain or self.domain
         assert domain
-        if (domain, locale.language) not in TRANSLATIONS:
-            translations = None
+        key = (domain, str(locale))
+        if key not in self.__translations:
+            # the first catalog found keeps its plural forms, the next ones are merged into it
+            translations: support.Translations | None = None
             for path in reversed(self.cfg.locale_folders):
-                trans = support.Translations.load(path, locales=locale.language, domain=domain)
-                if translations:
-                    translations.add(trans)  # type: ignore[attr-defined]
-                else:
+                trans = support.Translations.load(path, locales=str(locale), domain=domain)
+                if not isinstance(trans, support.Translations):
+                    continue  # this folder has no catalog for the locale
+
+                if translations is None:
                     translations = trans
+                else:
+                    translations.add(trans)
 
-            TRANSLATIONS[(domain, locale.language)] = translations  # type: ignore[assignment]
+            if translations is None:
+                translations = support.Translations()  # keeps `ugettext` usable without catalogs
+            self.__translations[key] = translations
 
-        return TRANSLATIONS[(domain, locale.language)]
+        return self.__translations[key]
 
     def gettext(self, string: str, domain: str | None = None, **variables) -> str:
         """Translate a string with the current locale."""
@@ -252,7 +281,7 @@ class Plugin(BasePlugin):
         """
         variables.setdefault("num", num)
         t = self.get_translations(domain)
-        return t.ungettext(singular, plural, num) % variables
+        return render(t.ungettext(singular, plural, num), variables)
 
     def pgettext(self, context: str, string: str, domain: str | None = None, **variables) -> str:
         """Like :meth:`gettext` but with a context."""
@@ -271,13 +300,13 @@ class Plugin(BasePlugin):
         """Like :meth:`ngettext` but with a context."""
         variables.setdefault("num", num)
         t = self.get_translations(domain)
-        return t.unpgettext(context, singular, plural, num) % variables
+        return render(t.unpgettext(context, singular, plural, num), variables)
 
 
 def render(value: str, variables) -> str:
     """Render a string with variables."""
     try:
         return value % variables if variables else value
-    except KeyError as e:
-        logger.warning("Missing variable for translation: %s", e)
+    except (KeyError, TypeError, ValueError) as e:
+        logger.warning("Cannot interpolate the translation: %s", e)
         return value

@@ -89,9 +89,9 @@ babel.gettext("Hello %(user)s", user="John")  # -> "Hello John"
 babel.ngettext("%(num)s apple", "%(num)s apples", 2)  # -> "2 apples"
 ```
 
-Variables are interpolated with the `%`-style mapping syntax. A missing variable is logged and
-the untranslated string is returned. Catalogs are loaded on demand and cached per
-`(domain, language)` for the process lifetime, so recompiled `.mo` files require a restart.
+Variables are interpolated with the `%`-style mapping syntax. A missing or unusable variable is
+logged and the untranslated string is returned. Catalogs are loaded on demand and cached per
+`(domain, locale)` for the process lifetime, so recompiled `.mo` files require a restart.
 
 ---
 

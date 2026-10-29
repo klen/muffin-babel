@@ -365,6 +365,7 @@ version = "1.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "asgi-babel" },
+    { name = "babel" },
     { name = "muffin" },
 ]
 
@@ -383,6 +384,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asgi-babel" },
+    { name = "babel" },
     { name = "muffin" },
 ]
 
