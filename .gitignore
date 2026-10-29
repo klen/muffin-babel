@@ -1,7 +1,12 @@
 *.egg-info
 /.cache
+/.mypy_cache
+/.pytest_cache
 /.ropeproject
-/_
+/.ruff_cache
+/.tox
+/.venv
+/_*
 /build
 /dist
 __pycache__

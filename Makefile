@@ -1,66 +1,107 @@
+PACKAGE = muffin_babel
 VIRTUAL_ENV ?= .venv
+
+all: $(VIRTUAL_ENV)
+
+.PHONY: help
+# target: help - Display callable targets
+help:
+	@egrep "^# target:" [Mm]akefile
+
+.PHONY: clean
+# target: clean - Display callable targets
+clean:
+	rm -rf build/ dist/ *.egg-info
+	find $(CURDIR) -name "*.py[co]" -delete
+	find $(CURDIR) -name "*.orig" -delete
+	find $(CURDIR)/$(PACKAGE) -name "__pycache__" | xargs rm -rf
 
 # =============
 #  Development
 # =============
 
-$(VIRTUAL_ENV): uv.lock .pre-commit-config.yaml
+$(VIRTUAL_ENV): pyproject.toml .pre-commit-config.yaml
 	@uv sync
 	@uv run pre-commit install
 	@touch $(VIRTUAL_ENV)
 
-.PHONY: run
-# target: run - Run example
-run: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/uvicorn --port 5000 --reload example:app
+.PHONY: t test
+# target: test - Runs tests
+t test: $(VIRTUAL_ENV)
+	@echo 'Run tests...'
+	@uv run pytest
 
-.PHONY: test t
-# target: test - Run tests
-test t: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/pytest tests.py
+.PHONY: types
+# target: types - Check typing
+types: $(VIRTUAL_ENV)
+	@echo 'Checking typing...'
+	@uv run pyrefly check
 
-.PHONY: mypy
-# target: mypy - Check types
-mypy: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/mypy muffin_babel
+.PHONY: lint
+# target: lint - Check code
+lint: $(VIRTUAL_ENV)
+	@make types
+	@uv run ruff check
+	@uv run ruff format --check
+
+outdated:
+	@echo "Checking for outdated dependencies..."
+	@uv tree --depth 1 --outdated | grep 'latest' || echo "All dependencies are up to date."
 
 .PHONY: example
-# target: example - Run an example
+# target: example - Run example
 example: $(VIRTUAL_ENV)
-	@$(VIRTUAL_ENV)/bin/uvicorn --port 5000 --reload example:app
+	@echo 'Run example...'
+	@uv run uvicorn example:app --reload --port=5000
 
 # ==============
 #  Bump version
 # ==============
 
-VERSION?=minor
+RELEASE	?= minor
+MANAGER	?= uv
 
-# target: release - Bump version
 .PHONY: release
+# target: release - Bump version
 release:
-	@git checkout develop
-	@git pull
+	@echo "Starting release process (bumping $(RELEASE) version)..."
 	@git checkout master
-	@git merge develop
 	@git pull
-	@uvx bump-my-version bump $(VERSION)
-	@uv lock
-	@git commit -am "build(release): `uv version --short`"
-	@git tag `uv version --short`
 	@git checkout develop
-	@git merge master
-	@git push --tags origin develop master
+	@git pull
+	@echo "Bumping version and creating release commit and tag..."
+	@uvx bump-my-version bump $(RELEASE)
+	@echo "Version bumped to `$(MANAGER) version --short`."
+	@$(MANAGER) lock
+	@echo "Committing version bump and creating tag..."
+	@VERSION=`$(MANAGER) version --short`; \
+		{ \
+			printf 'build(release): %s\n\n' "$$VERSION"; \
+			printf 'Changes:\n\n'; \
+			git log --oneline --pretty=format:'%s [%an]' master..develop | grep -Evi 'github|^Merge' || true; \
+		} | git commit -a -F -
+	@echo "Merging changes between branches..."
+	@git checkout master
+	@git merge --ff-only develop
+	@VERSION=`$(MANAGER) version --short`; \
+		git push origin master; \
+		git tag -a "$$VERSION" -m "$$VERSION"; \
+		git push origin "$$VERSION"
+	@git checkout develop
+	@git merge --ff-only master
+	@git push origin develop
+	@echo "Release process complete for `$(MANAGER) version --short`"
 
 .PHONY: minor
 minor: release
 
 .PHONY: patch
 patch:
-	@make release VERSION=patch
+	make release RELEASE=patch
 
 .PHONY: major
 major:
-	@make release VERSION=major
+	make release RELEASE=major
 
-v:
-	@echo `uv version --short`
+version v:
+	uv version --short

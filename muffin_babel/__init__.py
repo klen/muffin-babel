@@ -45,9 +45,9 @@ class Plugin(BasePlugin):
         "options_map": {"**.html": {"encoding": "utf-8"}},
     }
 
-    def setup(self, app: Application, **options):  # noqa: C901,PLR0915
+    def setup(self, app: Application, *, name: str | None = None, **options) -> bool:  # noqa: C901,PLR0915
         """Setup the plugin's commands."""
-        super(Plugin, self).setup(app, **options)
+        res = super(Plugin, self).setup(app, name=name, **options)
         self.domain = self.cfg.domain
 
         self.__locale_selector: Callable[[Request], Awaitable[str | None]] = (
@@ -162,6 +162,8 @@ class Plugin(BasePlugin):
                             "\n".join(message.auto_comments),
                         ]
                     )
+
+        return res
 
     async def __middleware__(
         self, handler: Callable, request: Request, receive: "TASGIReceive", send: "TASGISend"
