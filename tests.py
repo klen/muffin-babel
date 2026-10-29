@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from muffin_babel import Plugin as Babel
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     return muffin.Application(
         debug=True,
@@ -17,12 +17,12 @@ def app():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def jinja2(app):
     return muffin_jinja2.Plugin(app)
 
 
-@pytest.fixture()
+@pytest.fixture
 def babel(app):
     from muffin_babel import Plugin as Babel
 
@@ -105,3 +105,55 @@ def test_locale_ctx(babel: "Babel"):
 def test_gettext(babel: "Babel"):
     assert babel.gettext("Hello %(user)s", user="John") == "Hello John"
     assert babel.gettext("Hello %(user)s") == "Hello %(user)s"
+
+
+def test_ngettext(babel: "Babel"):
+    assert babel.ngettext("%(num)s apple", "%(num)s apples", 2) == "2 apples"
+    assert babel.ngettext("%(num)s apple", "%(num)s apples", 1) == "1 apple"
+    assert babel.npgettext("fruit", "%(num)s apple", "%(num)s apples", 2) == "2 apples"
+
+
+def test_pgettext(babel: "Babel"):
+    # The example catalog has no contextual entries; the source string is returned
+    assert babel.pgettext("greeting", "Hello World!") == "Hello World!"
+
+    with babel.locale_ctx("ru"):
+        assert babel.pgettext("greeting", "Hello World!") == "Hello World!"
+
+
+def test_get_translations(babel: "Babel"):
+    translations = babel.get_translations()
+    assert translations.gettext("Hello World!") == "Hello World!"
+    assert babel.get_translations() is translations
+
+
+def test_current_locale(babel: "Babel"):
+    babel.current_locale = "ru"
+    assert babel.current_locale.language == "ru"
+    assert babel.gettext("Hello World!") == "Привет, Мир!"
+
+    # Unknown locales are ignored silently
+    babel.current_locale = "unknown"
+    assert babel.current_locale.language == "ru"
+
+    babel.current_locale = "en"
+    assert babel.gettext("Hello World!") == "Hello World!"
+
+
+def test_setup_returns():
+    from muffin_babel import Plugin
+
+    assert Plugin().setup(muffin.Application("babel-setup")) is True
+
+
+async def test_example():
+    import example
+
+    client = muffin.TestClient(example.app)
+
+    async with client.lifespan():
+        res = await client.get("/")
+        assert "Hello World!" in await res.text()
+
+        res = await client.get("/?lang=ru")
+        assert "Привет, Мир!" in await res.text()
