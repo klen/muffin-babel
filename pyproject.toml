@@ -3,7 +3,7 @@ name = "muffin-babel"
 version = "1.7.0"
 description = "Localization support for the Muffin Framework"
 authors = [{ name = "Kirill Klenov", email = "horneds@gmail.com" }]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "MIT"
 keywords = ["localization", "internationalization", "muffin", "babel", "asyncio", "trio", "asgi"]
@@ -13,11 +13,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Topic :: Internet :: WWW/HTTP",
   "Framework :: AsyncIO",
   "Framework :: Trio",
@@ -31,82 +31,73 @@ Repository = "https://github.com/klen/muffin-babel"
 [dependency-groups]
 dev = [
   "ruff",
-  "black",
+  "pyrefly",
   "pre-commit",
+  "tox",
   "pytest",
-  "pytest-mypy",
   "pytest-aio[curio, trio]",
   "uvicorn",
   "muffin-jinja2",
 ]
 
-[tool.hatch.build.targets.sdist]
-include = ["muffin_babel"]
-
-[tool.hatch.build.targets.wheel]
-include = ["muffin_babel"]
-
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.7,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "muffin_babel"
+module-root = ""
 
 [tool.pytest.ini_options]
 addopts = "-xsv tests.py"
 log_cli = true
 
-[tool.mypy]
-packages = ["muffin_babel"]
-install_types = true
-non_interactive = true
-ignore_missing_imports = true
+[tool.pyrefly]
+project-includes = ["muffin_babel"]
+project-excludes = ["tests.py", "example", "pyproject.toml"]
 
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py310,py311,py312,py313,py314,pypy310
+envlist = py311,py312,py313,py314,py315,pypy311
 
 [testenv]
-deps = -e .[tests]
+allowlist_externals = uv,pytest
 commands =
-	pytest --mypy tests.py
-
-[testenv:pypy310]
-deps = -e .[tests]
-commands =
+  uv pip install --system -e .[dev]
 	pytest tests.py
 """
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
-exclude = [".venv", "docs", "examples"]
+target-version = "py311"
+exclude = [".venv", "docs"]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+  "A003",
   "ANN",
   "ARG",
-  "UP",
+  "COM",
   "D",
   "DJ",
-  "COM",
   "EM",
-  "RSE",
-  "SLF",
-  "RET",
-  "S101",
-  "PLR2004",
+  "FA100",
+  "FIX",
+  "N",
+  "PLC0415",
   "PLR0912",
-  "N804",
-  "A003",
+  "PLR2004",
+  "RET",
+  "RSE",
+  "RUF012",
+  "S101",
+  "SLF",
+  "TD",
   "TRY003",
-  "RUF001",
+  "UP",
 ]
-
-[tool.black]
-line-length = 100
-target-version = ["py310"]
-preview = true
 
 [tool.bumpversion]
 tag = false
